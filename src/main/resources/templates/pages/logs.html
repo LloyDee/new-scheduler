@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{shared/layout :: page('Logs', 'more', ~{::section})}">
+<body><section class="logs-page">
+    <link rel="stylesheet" th:href="@{/css/logs.css}" />
+    <div class="page-heading"><div><p class="eyebrow">APPLICATION ACTIVITY</p><h1>Logs</h1><p class="muted">Anonymous browser and device summaries. Locations are approximate.</p></div>
+        <form th:if="${unlocked}" method="post" th:action="@{/logs/lock}"><button class="secondary">Lock Logs</button></form>
+    </div>
+    <div th:unless="${unlocked}" class="card logs-password">
+        <h2>Password required</h2><p>Enter the Logs password to continue.</p>
+        <p th:if="${logsError}" th:text="${logsError}" role="alert"></p>
+        <form class="form-stack" method="post" th:action="@{/logs/unlock}">
+            <label>Password<input type="password" name="password" autocomplete="current-password" required autofocus /></label>
+            <button>Unlock Logs</button>
+        </form>
+    </div>
+    <div th:if="${unlocked}" class="card logs-results">
+        <p th:if="${logs.empty}">No device visits recorded yet.</p>
+        <div class="logs-table" th:unless="${logs.empty}">
+            <table><caption>Device visits — times shown in UTC</caption>
+                <thead><tr><th>Name</th><th>Browser</th><th>Operating system</th><th>Device</th><th>City</th><th>State / Region</th><th>Country</th><th>Timezone</th><th>Language</th><th>First seen</th><th>Last seen</th><th>Visits</th></tr></thead>
+                <tbody><tr th:each="visit : ${logs.content}">
+                    <td th:text="${visit.name ?: 'Anonymous'}"></td><td th:text="${visit.browser ?: 'Unknown'}"></td>
+                    <td th:text="${visit.operatingSystem ?: 'Unknown'}"></td><td th:text="${visit.deviceCategory ?: 'Unknown'}"></td>
+                    <td th:text="${visit.city ?: 'Unknown'}"></td><td th:text="${visit.region ?: 'Unknown'}"></td><td th:text="${visit.country ?: 'Unknown'}"></td>
+                    <td th:text="${visit.timezone ?: 'Unknown'}"></td><td th:text="${visit.language ?: 'Unknown'}"></td>
+                    <td><time th:datetime="${visit.firstSeen}" th:text="${#temporals.format(visit.firstSeen, 'MMM d, yyyy HH:mm', 'UTC')}"></time></td>
+                    <td><time th:datetime="${visit.lastSeen}" th:text="${#temporals.format(visit.lastSeen, 'MMM d, yyyy HH:mm', 'UTC')}"></time></td><td th:text="${visit.visitCount}"></td>
+                </tr></tbody>
+            </table>
+        </div>
+        <div class="logs-cards" th:unless="${logs.empty}">
+            <article class="logs-device" th:each="visit : ${logs.content}" aria-label="Device summary">
+                <header class="logs-device-heading">
+                    <h2 th:text="${visit.name ?: 'Anonymous'}"></h2>
+                    <span class="logs-device-type" th:text="${visit.deviceCategory ?: 'Unknown device'}"></span>
+                </header>
+                <p class="logs-browser" th:text="${visit.browser ?: 'Unknown browser'}"></p>
+                <dl class="logs-details logs-activity">
+                    <div><dt>Visits</dt><dd th:text="${visit.visitCount}"></dd></div>
+                    <div><dt>Last seen (UTC)</dt><dd><time th:datetime="${visit.lastSeen}" th:text="${#temporals.format(visit.lastSeen, 'MMM d, yyyy HH:mm', 'UTC')}"></time></dd></div>
+                </dl>
+                <h3>Approximate location</h3>
+                <dl class="logs-details">
+                    <div><dt>City</dt><dd th:text="${visit.city ?: 'Unknown'}"></dd></div>
+                    <div><dt>State / Region</dt><dd th:text="${visit.region ?: 'Unknown'}"></dd></div>
+                    <div><dt>Country</dt><dd th:text="${visit.country ?: 'Unknown'}"></dd></div>
+                </dl>
+                <h3>Device details</h3>
+                <dl class="logs-details">
+                    <div><dt>Operating system</dt><dd th:text="${visit.operatingSystem ?: 'Unknown'}"></dd></div>
+                    <div><dt>Timezone</dt><dd th:text="${visit.timezone ?: 'Unknown'}"></dd></div>
+                    <div><dt>Language</dt><dd th:text="${visit.language ?: 'Unknown'}"></dd></div>
+                    <div><dt>First seen (UTC)</dt><dd><time th:datetime="${visit.firstSeen}" th:text="${#temporals.format(visit.firstSeen, 'MMM d, yyyy HH:mm', 'UTC')}"></time></dd></div>
+                </dl>
+            </article>
+        </div>
+        <nav aria-label="Logs pages" class="logs-pagination">
+            <a class="button secondary" th:if="${logs.hasPrevious()}" th:href="@{/logs(page=${logs.number - 1})}">Previous</a>
+            <span th:text="${'Page ' + (logs.number + 1) + ' of ' + (logs.totalPages == 0 ? 1 : logs.totalPages)}"></span>
+            <a class="button secondary" th:if="${logs.hasNext()}" th:href="@{/logs(page=${logs.number + 1})}">Next</a>
+        </nav>
+    </div>
+</section></body></html>

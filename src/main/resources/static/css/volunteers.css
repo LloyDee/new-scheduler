@@ -1,0 +1,134 @@
+.volunteer-card {
+    position: relative;
+    overflow-wrap: anywhere;
+}
+
+.volunteer-card-main {
+    display: block;
+    color: inherit;
+}
+
+.volunteer-card-main::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+}
+
+.volunteer-card-main:hover {
+    text-decoration: none;
+}
+
+.volunteer-card-main:focus-visible::after {
+    outline: 3px solid var(--green);
+    outline-offset: 4px;
+}
+
+.volunteer-card .card-actions {
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.volunteer-card .card-actions a, .volunteer-card .card-actions button {
+    pointer-events: auto;
+}
+
+.volunteer-icon-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.volunteers-page .volunteer-icon-line svg {
+    width: 19px;
+    height: 19px;
+    margin-top: 2px;
+    flex: 0 0 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--green);
+}
+
+.volunteer-dialog {
+    width: min(640px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 24px 64px rgb(0 0 0 / 25%);
+}
+
+.volunteer-dialog[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.volunteer-dialog::backdrop {
+    background: rgb(0 0 0 / 45%);
+}
+
+.volunteer-dialog-content {
+    padding: 24px;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+    min-height: 0;
+}
+
+.volunteer-dialog-content h2 {
+    margin-top: 0;
+}
+
+.volunteer-details {
+    display: grid;
+    gap: 16px;
+}
+
+.volunteer-details dt {
+    font-size: .85rem;
+    color: var(--muted);
+}
+
+.volunteer-details dd {
+    margin: 4px 0 0 27px;
+}
+
+.volunteer-details dd p {
+    margin: 4px 0;
+}
+
+.volunteer-assignment {
+    padding: 16px 0;
+    border-top: 1px solid var(--border);
+}
+
+.volunteer-assignment h4, .volunteer-assignment p {
+    margin: 0 0 8px;
+}
+
+.volunteer-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+}
+
+body:has(.volunteer-dialog[open]) {
+    overflow: hidden;
+}
+
+@media (max-width: 740px) {
+    .volunteer-dialog-content {
+        padding: 20px;
+    }
+
+    .volunteer-dialog-footer button {
+        width: 100%;
+    }
+}

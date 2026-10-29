@@ -1,0 +1,131 @@
+.logs-page, .logs-results, .logs-password {
+    min-width: 0;
+}
+
+.logs-page {
+    overflow-wrap: anywhere;
+}
+
+.logs-table {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.logs-table caption {
+    text-align: left;
+    color: var(--muted);
+    padding-bottom: 12px;
+}
+
+.logs-table time {
+    white-space: nowrap;
+}
+
+.logs-cards {
+    display: none;
+}
+
+.logs-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.logs-page button, .logs-pagination a, .logs-password input {
+    min-height: 44px;
+}
+
+@media (max-width: 740px) {
+    .logs-table {
+        display: none;
+    }
+
+    .logs-cards {
+        display: grid;
+        gap: 16px;
+    }
+
+    .logs-device {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+    }
+
+    .logs-device-heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .logs-device h2, .logs-browser {
+        margin: 0;
+    }
+
+    .logs-device h2 {
+        font-size: 1.1rem;
+    }
+
+    .logs-device-type {
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: var(--green-light);
+        color: var(--green);
+        font-size: .8rem;
+    }
+
+    .logs-browser {
+        margin-top: 8px;
+        font-weight: 600;
+    }
+
+    .logs-device h3 {
+        margin: 18px 0 8px;
+        font-size: .9rem;
+    }
+
+    .logs-details {
+        margin: 0;
+        display: grid;
+        gap: 10px;
+    }
+
+    .logs-details > div {
+        min-width: 0;
+    }
+
+    .logs-details dt {
+        color: var(--muted);
+        font-size: .8rem;
+    }
+
+    .logs-details dd {
+        margin: 2px 0 0;
+        font-size: .9rem;
+    }
+
+    .logs-activity {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        margin-top: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .logs-password input {
+        min-width: 0;
+        width: 100%;
+        font-size: 16px;
+    }
+
+    .logs-page .page-heading > form, .logs-password button {
+        width: 100%;
+    }
+
+    .logs-page .page-heading > form button {
+        width: 100%;
+    }
+}

@@ -117,7 +117,7 @@ class SchedulerIntegrationTest {
                 base + "/departments", base + "/departments?edit=" + department.getId(), base + "/departments?view=" + department.getId(),
                 base + "/schedule", base + "/schedule?edit=" + shift.getId(),
                 base + "/reports", base + "/reports?type=volunteer", base + "/reports?type=coverage")) {
-            mvc.perform(get(path)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Gather")));
+            mvc.perform(get(path)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Scheduler Application")));
         }
         mvc.perform(get(base + "/schedule")).andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Alex Rivera")));
@@ -340,8 +340,8 @@ class SchedulerIntegrationTest {
         assertThat(saved.getDepartmentRoles().values()).containsExactlyInAnyOrder(Volunteer.Role.OVERSEER, Volunteer.Role.VOLUNTEER);
         mvc.perform(get("/events/" + event.getId() + "/volunteers?edit=" + volunteer.getId()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Attendants: Overseer")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Parking: Volunteer")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Attendants Overseer")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Parking Volunteer")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"ELDER\" selected")));
         service.saveVolunteer(event.getId(), volunteer.getId(), volunteerInput("name", "Alex", "privilege", "PUBLISHER", secondKey, "ADMIN"));
         entityManager.flush(); entityManager.clear();
@@ -410,6 +410,39 @@ class SchedulerIntegrationTest {
             assertThat(data.volunteers().stream().filter(v -> v.getDepartmentRoles().get(d) == Volunteer.Role.ASSISTANT_OVERSEER).count()).isEqualTo(2);
         }
         assertThat(service.snapshot(event.getId()).volunteers()).hasSize(1);
+    }
+
+    @Test void volunteerCardsKeepContactsInDialogAndShowOnlyPersonalAssignments() throws Exception {
+        service.saveVolunteer(event.getId(), volunteer.getId(), volunteerInput("name", "Alex Rivera", "notes", "Private <note>"));
+        service.assign(event.getId(), shift.getId(), volunteer.getId(), false);
+        Volunteer other = service.saveVolunteer(event.getId(), null, volunteerInput("name", "Other Person", "email", "other@example.com"));
+        Shift otherShift = service.saveShift(event.getId(), null, shiftInput("11:00", "12:00"));
+        service.assign(event.getId(), otherShift.getId(), other.getId(), false);
+        var response = mvc.perform(get("/events/" + event.getId() + "/volunteers").param("view", volunteer.getId().toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String card = response.substring(response.indexOf("<article class=\"card volunteer-card\""));
+        card = card.substring(0, card.indexOf("</article>"));
+        assertThat(card).contains("data-volunteer-dialog", "Edit", "Delete", "#privilege", "#departments")
+                .doesNotContain("alex@example.com", "Private", "Assignments", "tel:", "mailto:");
+        String dialog = response.substring(response.indexOf("id=\"volunteer-dialog-" + volunteer.getId() + "\""));
+        dialog = dialog.substring(0, dialog.indexOf("</dialog>"));
+        assertThat(dialog).contains("data-open-on-load=\"true\"", "mailto:alex@example.com", "Private &lt;note&gt;", "9:00 AM", "Close")
+                .doesNotContain("Other Person", "11:00", ">Edit<", ">Delete<");
+        mvc.perform(get("/events/" + event.getId() + "/volunteers").param("view", volunteer.getId().toString())
+                .cookie(new jakarta.servlet.http.Cookie("schedulerTimeFormat", "24")))
+                .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("09:00")));
+    }
+
+    @Test void directVolunteerDialogWorksOutsideFilterAndRejectsOtherEvent() throws Exception {
+        Department parking = service.saveDepartment(event.getId(), null, Map.of("name", "Parking"));
+        mvc.perform(get("/events/" + event.getId() + "/volunteers")
+                .param("departmentId", parking.getId().toString()).param("view", volunteer.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-open-on-load=\"true\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("No assignments yet.")));
+        Event otherEvent = event("Other", "REGIONAL_CONVENTION");
+        mvc.perform(get("/events/" + otherEvent.getId() + "/volunteers").param("view", volunteer.getId().toString()))
+                .andExpect(status().isNotFound());
     }
 
     private Map<String, String> volunteerInput(String... values) {

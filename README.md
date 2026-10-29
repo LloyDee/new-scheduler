@@ -62,6 +62,16 @@ Schema creation/update is automatic through Hibernate for this initial H2 versio
 
 ## Manual acceptance checks
 
+### Device Logs
+
+Open **More → Logs** and enter `snow`. Access stays unlocked for the server session; **Lock Logs** closes it immediately. Override the default with `SCHEDULER_LOGS_PASSWORD` or the `scheduler.logs.password` Spring property. Five incorrect attempts block further attempts in that session for five minutes.
+
+Each browser gets a random, HttpOnly identifier cookie lasting one year. Page loads update its anonymous summary in `scheduler_device_visit`; clearing cookies creates another summary. Names are reserved for future account integration. Summaries persist across restarts and are not automatically deleted. Concurrent updates are serialized within one application instance; multiple replicas would require database-level concurrency coordination.
+
+The browser queries ipapi.co for approximate city, state, and country, caching successful results for 24 hours. Failed or blocked lookups do not prevent recording. Browsers blocking JavaScript may not be recorded. No historical visits are backfilled.
+
+Run backend tests with `./gradlew test` and the mocked browser tracking checks with `node --test src/test/js/device-visits.test.cjs`.
+
 1. At a 360px viewport, navigate all five tabs, use each form, and verify the bottom navigation does not obscure content. Check keyboard focus and the skip link.
 2. Create one event of each type and verify their volunteers and departments stay separate.
 3. Assign a volunteer to overlapping shifts: cancel once, then explicitly confirm. Edit an assigned shift to introduce a conflict and confirm its warning. Test adjacent shifts too.

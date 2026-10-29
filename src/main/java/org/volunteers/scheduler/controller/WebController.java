@@ -117,11 +117,17 @@ public class WebController {
             defaults.put("privilege", v.getPrivilege() == null ? "" : v.getPrivilege().name());
             v.getDepartmentRoles().forEach((department, role) -> defaults.put("departmentRole_" + department.getId(), role.name()));
         }
-        if (view != null) {
-            model.addAttribute("selectedVolunteer", service.volunteer(eventId, view));
-            model.addAttribute("personalRows", data.rows().stream().filter(r -> r.assignments().stream()
-                    .anyMatch(a -> a.getVolunteer().getId().equals(view))).toList());
-        }
+        Map<Long, Volunteer> dialogVolunteers = new LinkedHashMap<>();
+        @SuppressWarnings("unchecked")
+        List<Volunteer> visible = (List<Volunteer>) model.getAttribute("filteredVolunteers");
+        visible.forEach(v -> dialogVolunteers.put(v.getId(), v));
+        if (view != null) dialogVolunteers.put(view, service.volunteer(eventId, view));
+        model.addAttribute("dialogVolunteers", dialogVolunteers.values());
+        model.addAttribute("openVolunteerId", view);
+        Map<Long, List<SchedulerService.ShiftRow>> volunteerAssignments = new HashMap<>();
+        dialogVolunteers.keySet().forEach(id -> volunteerAssignments.put(id, data.rows().stream()
+                .filter(row -> row.assignments().stream().anyMatch(a -> a.getVolunteer().getId().equals(id))).toList()));
+        model.addAttribute("volunteerAssignments", volunteerAssignments);
         draft(model, defaults); model.addAttribute("editId", edit);
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error") && model.containsAttribute("draft"));
         model.addAttribute("volunteerRoles", Volunteer.Role.values());
