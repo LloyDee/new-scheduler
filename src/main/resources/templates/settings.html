@@ -1,38 +1,122 @@
 <!doctype html>
 <html
-  lang="en"
-  xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{layout :: page('Settings', 'more', ~{::section})}"
+        lang="en"
+        xmlns:th="http://www.thymeleaf.org"
+        th:replace="~{layout :: page('Settings', 'more', ~{::section})}"
 >
-  <body>
-    <section>
-      <div class="page-heading">
+<body>
+<section>
+    <link rel="stylesheet" th:href="@{/settings-app.css}" />
+    <script defer th:src="@{/settings-app.js}"></script>
+    <div class="page-heading">
         <div>
-          <p class="eyebrow">MAKE YOURSELF AT HOME</p>
-          <h1>Settings</h1>
-          <p class="muted">Small preferences for a smoother day.</p>
+            <p class="eyebrow">MAKE YOURSELF AT HOME</p>
+            <h1>Settings</h1>
+            <p class="muted">Small preferences for a smoother day.</p>
         </div>
-      </div>
-      <div class="card settings-card">
-        <h2>Display preferences</h2>
-        <form class="form-stack" method="post" th:action="@{/settings}">
-          <label
-            >Time format
-            <select name="timeFormat">
-              <option value="12" th:selected="${timeFormat == '12'}">
-                12-hour · 2:30 PM
-              </option>
-              <option value="24" th:selected="${timeFormat == '24'}">
-                24-hour · 14:30
-              </option>
-            </select></label
-          >
-          <p class="muted">
-            Saved in this browser. Times use the event’s local time.
-          </p>
-          <button>Save preferences</button>
-        </form>
-      </div>
-    </section>
-  </body>
+    </div>
+    <div class="settings-grid">
+        <div class="card theme-card">
+            <h2>Theme</h2>
+            <fieldset class="theme-options" aria-describedby="theme-help">
+                <legend class="sr-only">Choose your theme</legend>
+                <label class="theme-option" style="--swatch: #174d44; --swatch-light: #e4f2ed">
+                    <input type="radio" name="theme" value="teal" checked/>
+                    <span class="theme-preview" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="theme-name">Teal <small>Fresh &amp; grounded</small></span>
+                </label>
+                <label class="theme-option" style="--swatch: #5941a9; --swatch-light: #eee9fc">
+                    <input type="radio" name="theme" value="royal"/>
+                    <span class="theme-preview" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="theme-name">Royal <small>Rich &amp; refined</small></span>
+                </label>
+                <label class="theme-option" style="--swatch: #a33460; --swatch-light: #fce8ef">
+                    <input type="radio" name="theme" value="rose"/>
+                    <span class="theme-preview" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="theme-name">Rose <small>Warm &amp; welcoming</small></span>
+                </label>
+                <label class="theme-option" style="--swatch: #1264a3; --swatch-light: #e4f1fc">
+                    <input type="radio" name="theme" value="azure"/>
+                    <span class="theme-preview" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span class="theme-name">Azure <small>Bright &amp; focused</small></span>
+                </label>
+            </fieldset>
+            <p class="theme-status muted" data-theme-status role="status" aria-live="polite"></p>
+        </div>
+        <div class="card settings-card">
+            <h2>Display preferences</h2>
+            <form class="form-stack" method="post" th:action="@{/settings}">
+                <label
+                >Time format
+                    <select name="timeFormat">
+                        <option value="12" th:selected="${timeFormat == '12'}">
+                            12-hour · 2:30 PM
+                        </option>
+                        <option value="24" th:selected="${timeFormat == '24'}">
+                            24-hour · 14:30
+                        </option>
+                    </select></label
+                >
+                <p class="muted">
+                    Saved in this browser. Times use the event’s local time.
+                </p>
+                <button>Save preferences</button>
+            </form>
+        </div>
+        <div class="card settings-card app-card">
+            <h2>App</h2>
+            <div class="app-options">
+                <button type="button" class="secondary" data-app-dialog="about-dialog" aria-haspopup="dialog" aria-controls="about-dialog">About</button>
+                <button type="button" class="secondary" data-app-dialog="privacy-dialog" aria-haspopup="dialog" aria-controls="privacy-dialog">Privacy Policy</button>
+                <button type="button" class="secondary" data-app-dialog="terms-dialog" aria-haspopup="dialog" aria-controls="terms-dialog">Terms of Service</button>
+            </div>
+        </div>
+    </div>
+    <dialog id="about-dialog" class="app-dialog" aria-labelledby="about-title">
+        <div class="app-dialog-content">
+            <h2 id="about-title">About</h2>
+            <img class="app-about-logo" th:src="@{/images/logo.gif}" alt="Volunteer Scheduler logo" />
+            <h3>Volunteer Scheduler</h3>
+            <hr />
+            <p><strong>Lloyd Jayson Pintac</strong><br />Software Developer</p>
+            <hr />
+            <h3>Contact Information</h3>
+            <hr />
+            <p>My Phone: <a href="tel:+18135160335">(813) 516-0335</a></p>
+            <p>Email: <a href="mailto:LJPINTAC@GMAIL.COM">LJPINTAC@GMAIL.COM</a></p>
+        </div>
+        <form method="dialog" class="app-dialog-footer"><button autofocus>Close</button></form>
+    </dialog>
+    <dialog id="privacy-dialog" class="app-dialog" aria-labelledby="privacy-title">
+        <div class="app-dialog-content">
+            <h2 id="privacy-title">Privacy Policy</h2>
+            <p><strong>Effective Date: July 5, 2026</strong></p>
+            <p>At Volunteer Scheduler by Lloyd Pintac, we value your privacy and are committed to protecting your personal information.</p>
+            <p>We may collect information you provide, such as your name, email address, and reports you submit, as well as basic device information needed to operate and improve the app.</p>
+            <p>Your information is used to provide our services, manage reports, improve the app, maintain security, and communicate important updates. We do not sell your personal information.</p>
+            <p>We take reasonable measures to protect your data from unauthorized access. Information may be shared only when required by law.</p>
+            <p>You may request access to, correction of, or deletion of your personal information by contacting us.</p>
+            <p>We may update this Privacy Policy from time to time. Continued use of the app after changes means you accept the updated policy. Maraming Salamat!</p>
+            <p>Contact: <a href="mailto:ljpintac@gmail.com">ljpintac@gmail.com</a></p>
+        </div>
+        <form method="dialog" class="app-dialog-footer"><button autofocus>Close</button></form>
+    </dialog>
+    <dialog id="terms-dialog" class="app-dialog" aria-labelledby="terms-title">
+        <div class="app-dialog-content">
+            <h2 id="terms-title">Terms of Service</h2>
+            <p><strong>Effective Date: July 5, 2026</strong></p>
+            <p>Welcome to Volunteer Scheduler. By using this application, you agree to these Terms of Service.</p>
+            <p>You are responsible for using the app lawfully and for ensuring that any information or reports you submit are accurate and do not violate the rights of others.</p>
+            <p>You may not misuse the app, attempt to gain unauthorized access, interfere with its operation, or use it for illegal or harmful activities.</p>
+            <p>We strive to provide a reliable service but do not guarantee that the app will always be available or free from errors. Features may be updated, modified, or discontinued at any time without prior notice.</p>
+            <p>All content, logos, and software within the app are the property of Volunteer Scheduler and may not be copied or distributed without permission.</p>
+            <p>To the fullest extent permitted by law, Schedule Application by Lloyd Pintac is not liable for any indirect, incidental, or consequential damages resulting from your use of the app.</p>
+            <p>We may update these Terms from time to time. Continued use of the app after changes are posted means you accept the revised Terms.</p>
+            <p>If you have any questions, please contact us at</p>
+            <p><a href="mailto:ljpintac@gmail.com">ljpintac@gmail.com</a> | Salamat!</p>
+        </div>
+        <form method="dialog" class="app-dialog-footer"><button autofocus>Close</button></form>
+    </dialog>
+</section>
+</body>
 </html>
