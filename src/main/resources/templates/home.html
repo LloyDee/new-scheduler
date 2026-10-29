@@ -1,0 +1,75 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{layout :: page('Home', 'home', ~{::section})}"
+>
+  <body>
+    <section>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">YOUR EVENT AT A GLANCE</p>
+          <h1>Let’s get everyone ready.</h1>
+          <p class="muted">A little organization. A shared purpose.</p>
+        </div>
+        <a th:if="${event != null}" class="button" th:href="${base + '/schedule?create=true#editor'}"
+          >+ Create shift</a
+        >
+      </div>
+      <article class="card weather-card" aria-label="San Antonio weather" data-weather>
+        <script defer th:src="@{/weather.js}"></script>
+        <div class="weather-summary">
+          <div class="weather-current">
+            <span class="weather-icon" data-weather-icon aria-hidden="true">☀</span>
+            <div>
+              <h2 class="weather-temperature"><span data-weather-temperature>—</span><span class="weather-unit">°F</span></h2>
+              <p data-weather-condition>Current weather</p>
+            </div>
+          </div>
+          <div class="weather-location">
+            <strong>San Antonio, TX</strong>
+            <p data-weather-status role="status">Loading weather…</p>
+          </div>
+        </div>
+        <dl class="weather-details">
+          <div><dt>Feels like</dt><dd data-weather-feels>—</dd></div>
+          <div><dt>Humidity</dt><dd data-weather-humidity>—</dd></div>
+          <div><dt>Wind</dt><dd data-weather-wind>—</dd></div>
+        </dl>
+        <div class="weather-range">
+          <span>High <strong data-weather-high>—</strong></span>
+          <span>Low <strong data-weather-low>—</strong></span>
+        </div>
+        <noscript><p>Enable JavaScript to load the live weather forecast.</p></noscript>
+      </article>
+      <div class="stats" th:if="${event != null}">
+        <a class="card stat" th:href="${base + '/volunteers'}"
+          ><span class="eyebrow">VOLUNTEERS</span
+          ><strong th:text="${volunteers.size()}"></strong
+          ><span>People ready to help →</span></a
+        ><a class="card stat" th:href="${base + '/departments'}"
+          ><span class="eyebrow">DEPARTMENTS</span
+          ><strong th:text="${departments.size()}"></strong
+          ><span>Teams working together →</span></a
+        ><a class="card stat" th:href="${base + '/schedule'}"
+          ><span class="eyebrow">SHIFTS</span
+          ><strong th:text="${allRows.size()}"></strong
+          ><span>Moments to make a difference →</span></a
+        ><a class="card stat" th:href="${base + '/reports?type=coverage'}"
+          ><span class="eyebrow">OPEN POSITIONS</span
+          ><strong th:text="${missing}"></strong
+          ><span>Assignments still needed →</span></a
+        >
+      </div>
+      <div class="home-shifts" th:if="${event != null}">
+        <div>
+          <div class="section-heading">
+            <h2>Upcoming shifts</h2>
+            <a th:href="${base + '/schedule'}">View schedule →</a>
+          </div>
+          <div th:replace="~{fragments :: shifts(${upcoming}, false)}"></div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

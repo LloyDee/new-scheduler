@@ -1,0 +1,35 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{layout :: page('More', 'more', ~{::section})}"
+>
+  <body>
+    <section>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">THE REST OF YOUR TOOLKIT</p>
+          <h1>More</h1>
+          <p class="muted">
+            Manage events, make the app yours, and share the plan.
+          </p>
+        </div>
+      </div>
+      <div class="menu-grid">
+        <a class="card menu-card" th:href="@{/settings}"
+          ><span class="menu-number">01</span>
+          <h2>Settings <span>↗</span></h2>
+          <p>Choose how times appear throughout your scheduler.</p></a
+        ><a class="card menu-card" th:href="@{/events}"
+          ><span class="menu-number">02</span>
+          <h2>Events <span>↗</span></h2>
+          <p>Create, edit, and switch between conventions and assemblies.</p></a
+        ><a class="card menu-card" th:href="${base + '/reports'}"
+          ><span class="menu-number">03</span>
+          <h2>Reports <span>↗</span></h2>
+          <p>Print schedules, check coverage, and download assignments.</p></a
+        >
+      </div>
+    </section>
+  </body>
+</html>

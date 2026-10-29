@@ -1,0 +1,164 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{layout :: page('Schedule', 'schedule', ~{::section})}"
+>
+  <body>
+    <section>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">A SHARED PURPOSE, A CLEAR PLAN</p>
+          <h1>Schedule</h1>
+          <p class="muted">
+            Build your shifts and give every volunteer a place.
+          </p>
+        </div>
+        <a class="button" th:href="${base + '/schedule?create=true#editor'}"
+          >+ Create shift</a
+        >
+      </div>
+      <div class="card alert warning" th:if="${pending != null}">
+        <h2>Assign despite the overlap?</h2>
+        <p>
+          The conflicting assignment is listed above. Confirm only if the
+          volunteer can cover both shifts.
+        </p>
+        <form
+          method="post"
+          th:action="@{${base + '/schedule/' + pending['shiftId'] + '/assign'}}"
+        >
+          <input
+            type="hidden"
+            name="volunteerId"
+            th:value="${pending['volunteerId']}"
+          /><input type="hidden" name="confirmOverlap" value="true" />
+          <div class="card-actions">
+            <button>Confirm overlapping assignment</button
+            ><a th:href="${base + '/schedule'}">Cancel</a>
+          </div>
+        </form>
+      </div>
+      <div class="workspace" th:classappend="${!showEditor ? 'list-only' : ''}">
+        <div class="stack">
+          <p
+            class="list-count"
+            th:text="${rows.size() + ' shifts · ordered by date and time'}"
+          ></p>
+          <div th:replace="~{fragments :: shifts(${rows}, true)}"></div>
+        </div>
+        <aside class="card editor" id="editor" th:if="${showEditor}">
+          <p class="eyebrow">SHIFT DETAILS</p>
+          <h2
+            th:text="${editId == null ? 'Create a shift' : 'Edit shift'}"
+          ></h2>
+          <div th:if="${departments.isEmpty()}" class="empty">
+            <p>Add a department before creating shifts.</p>
+            <a class="button" th:href="${base + '/departments?create=true#editor'}"
+              >Add department</a
+            >
+          </div>
+          <form
+            th:unless="${departments.isEmpty()}"
+            class="form-stack"
+            method="post"
+            th:action="@{${base + '/schedule/save'}}"
+          >
+            <input
+              th:if="${editId != null}"
+              type="hidden"
+              name="id"
+              th:value="${editId}"
+            />
+
+            <label
+              >Department
+              <select name="departmentId" required>
+                <option value="">Choose a department…</option>
+                <option
+                  th:each="d : ${departments}"
+                  th:value="${d.id}"
+                  th:text="${d.name}"
+                  th:selected="${draft['departmentId'] == d.id.toString()}"
+                ></option></select></label>
+            <label>Shift name
+              <input name="name" maxlength="160" required th:value="${draft['name']}" />
+            </label>
+            <label th:if="${event.type.name() != 'CIRCUIT_ASSEMBLY'}"
+              >Date
+              <input
+                name="date"
+                type="date"
+                required
+                th:min="${event.startDate}"
+                th:max="${event.endDate}"
+                th:value="${draft['date']}"
+            /></label>
+            <div class="form-grid">
+              <label
+                >Start time
+                <input
+                  th:if="${event.type.name() != 'CIRCUIT_ASSEMBLY'}"
+                  name="startTime"
+                  type="time"
+                  required
+                  th:value="${draft['startTime']}" />
+                <select th:if="${event.type.name() == 'CIRCUIT_ASSEMBLY'}" name="startTime" required>
+                  <option value="">Choose start time</option>
+                  <option th:each="time : ${shiftTimes}" th:value="${time.toString()}"
+                          th:text="${#temporals.format(time, 'hh:mm a')}"
+                          th:selected="${draft['startTime'] == time.toString()}"></option>
+                </select></label
+              ><label
+                >End time
+                <input
+                  th:if="${event.type.name() != 'CIRCUIT_ASSEMBLY'}"
+                  name="endTime"
+                  type="time"
+                  required
+                  th:value="${draft['endTime']}"
+              />
+                <select th:if="${event.type.name() == 'CIRCUIT_ASSEMBLY'}" name="endTime" required>
+                  <option value="">Choose end time</option>
+                  <option th:each="time : ${shiftTimes}" th:value="${time.toString()}"
+                          th:text="${#temporals.format(time, 'hh:mm a')}"
+                          th:selected="${draft['endTime'] == time.toString()}"></option>
+                </select></label>
+            </div>
+            <label
+              >Volunteers needed
+              <input
+                name="requiredCount"
+                type="number"
+                min="1"
+                max="10000"
+                required
+                th:value="${draft['requiredCount']}" /></label
+            ><label
+              >Notes <span class="optional">optional</span
+              ><textarea
+                name="notes"
+                rows="3"
+                maxlength="2000"
+                th:text="${draft['notes']}"
+              ></textarea></label
+            ><label th:if="${overlap != null}" class="checkbox-label"
+              ><input
+                type="checkbox"
+                name="confirmOverlap"
+                value="true"
+                required
+              />
+              I confirm these overlapping assignments.</label
+            ><button
+              th:text="${editId == null ? 'Create shift' : 'Save changes'}"
+            ></button
+            ><a th:href="${base + '/schedule'}"
+              >Cancel</a
+            >
+          </form>
+        </aside>
+      </div>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{layout :: page('Settings', 'more', ~{::section})}"
+>
+  <body>
+    <section>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">MAKE YOURSELF AT HOME</p>
+          <h1>Settings</h1>
+          <p class="muted">Small preferences for a smoother day.</p>
+        </div>
+      </div>
+      <div class="card settings-card">
+        <h2>Display preferences</h2>
+        <form class="form-stack" method="post" th:action="@{/settings}">
+          <label
+            >Time format
+            <select name="timeFormat">
+              <option value="12" th:selected="${timeFormat == '12'}">
+                12-hour · 2:30 PM
+              </option>
+              <option value="24" th:selected="${timeFormat == '24'}">
+                24-hour · 14:30
+              </option>
+            </select></label
+          >
+          <p class="muted">
+            Saved in this browser. Times use the event’s local time.
+          </p>
+          <button>Save preferences</button>
+        </form>
+      </div>
+    </section>
+  </body>
+</html>

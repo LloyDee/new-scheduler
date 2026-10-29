@@ -1,0 +1,108 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{layout :: page('Departments', 'departments', ~{::section})}"
+>
+  <body>
+    <section>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">EVERY TEAM HAS A PURPOSE</p>
+          <h1>Departments</h1>
+          <p class="muted">Organize your teams and see where help is needed.</p>
+        </div>
+        <a class="button" th:href="${base + '/departments?create=true#editor'}"
+          >+ Add department</a
+        >
+      </div>
+      <div class="workspace" th:classappend="${!showEditor ? 'list-only' : ''}">
+        <div class="stack">
+          <div class="card" th:if="${selectedDepartment != null}">
+            <div class="section-heading">
+              <h2 th:text="${selectedDepartment.name + ' schedule'}"></h2>
+              <a th:href="${base + '/departments'}">Close</a>
+            </div>
+            <div
+              th:replace="~{fragments :: shifts(${departmentRows}, false)}"
+            ></div>
+          </div>
+          <div class="card empty" th:if="${departments.isEmpty()}">
+            <h2>Make room for your teams.</h2>
+            <p>
+              Add your first department, then create its shifts in the schedule.
+            </p>
+          </div>
+          <article class="card" th:each="d : ${departments}" th:with="details=${departmentDetails[d.id]}">
+            <p class="eyebrow">DEPARTMENT</p>
+            <h2 th:text="${d.name}"></h2>
+            <p
+              class="preserve muted"
+              th:if="${!#strings.isEmpty(d.description)}"
+              th:text="${d.description}"
+            ></p>
+            <p><strong>Volunteers:</strong> <span th:text="${details['volunteerCount']}"></span></p>
+            <p><strong>Overseer:</strong> <span th:text="${details['OVERSEER']}"></span></p>
+            <p><strong>Assistant Overseers:</strong> <span th:text="${details['ASSISTANT_OVERSEER']}"></span></p>
+            <div class="card-actions">
+              <a th:href="@{${base + '/departments'}(view=${d.id})}"
+                >View coverage →</a
+              ><a th:href="@{${base + '/schedule'}(departmentId=${d.id})}"
+                >Schedule</a
+              ><a
+                th:href="@{${base + '/departments'}(edit=${d.id})} + '#editor'"
+                >Edit</a
+              >
+              <form
+                method="post"
+                th:action="@{${base + '/departments/' + d.id + '/delete'}}"
+                data-confirm="Delete this department and all its shifts and assignments?"
+              >
+                <button class="text-button danger">Delete</button>
+              </form>
+            </div>
+          </article>
+        </div>
+        <aside class="card editor" id="editor" th:if="${showEditor}">
+          <p class="eyebrow">TEAM DETAILS</p>
+          <h2
+            th:text="${editId == null ? 'Add a department' : 'Edit department'}"
+          ></h2>
+          <form
+            class="form-stack"
+            method="post"
+            th:action="@{${base + '/departments/save'}}"
+          >
+            <input
+              th:if="${editId != null}"
+              type="hidden"
+              name="id"
+              th:value="${editId}"
+            /><label
+              >Department name
+              <input
+                name="name"
+                required
+                maxlength="160"
+                th:value="${draft['name']}"
+                placeholder="e.g. Attendants" /></label
+            ><label
+              >Description <span class="optional">optional</span
+              ><textarea
+                name="description"
+                maxlength="2000"
+                rows="4"
+                th:text="${draft['description']}"
+              ></textarea></label
+            ><button
+              th:text="${editId == null ? 'Add department' : 'Save changes'}"
+            ></button
+            ><a th:href="${base + '/departments'}"
+              >Cancel</a
+            >
+          </form>
+        </aside>
+      </div>
+    </section>
+  </body>
+</html>

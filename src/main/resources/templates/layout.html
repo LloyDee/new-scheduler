@@ -1,0 +1,131 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:fragment="page(title, tab, content)"
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#174d44" />
+    <title th:text="${title + ' · Gather'}">Gather</title>
+    <link rel="stylesheet" th:href="@{/app.css}" />
+    <script defer th:src="@{/app.js}"></script>
+  </head>
+  <body>
+    <svg
+      class="icon-library"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <symbol id="home" viewBox="0 0 24 24">
+        <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1Z" />
+      </symbol>
+      <symbol id="people" viewBox="0 0 24 24">
+        <circle cx="9" cy="7" r="4" />
+        <path
+          d="M2 21v-3a7 7 0 0 1 14 0v3M17 4a4 4 0 0 1 0 8m2 3a6 6 0 0 1 3 6"
+        />
+      </symbol>
+      <symbol id="calendar" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M7 2v6m10-6v6M3 11h18m-14 5h3m4 0h3" />
+      </symbol>
+      <symbol id="departments" viewBox="0 0 24 24">
+        <rect x="8" y="2" width="8" height="6" rx="1" />
+        <rect x="2" y="16" width="7" height="6" rx="1" />
+        <rect x="15" y="16" width="7" height="6" rx="1" />
+        <path d="M12 8v4H5v4m7-4h7v4" />
+      </symbol>
+      <symbol id="settings" viewBox="0 0 24 24">
+        <path d="M10 2h4l1 3 2 1 3-1 2 4-2 2v2l2 2-2 4-3-1-2 1-1 3h-4l-1-3-2-1-3 1-2-4 2-2v-2L2 9l2-4 3 1 2-1Z" />
+        <circle cx="12" cy="12" r="3" />
+      </symbol>
+      <symbol id="reports" viewBox="0 0 24 24">
+        <path d="M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9Zm0 0v7h7M7 17v-3m5 3v-5m5 5v-2" />
+      </symbol>
+      <symbol id="more" viewBox="0 0 24 24">
+        <circle cx="5" cy="12" r="1" />
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+      </symbol>
+    </svg>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="brand" th:href="@{/}"
+          ><span class="brand-mark">g.</span
+          ><span>Gather<small>VOLUNTEER SCHEDULER</small></span></a
+        >
+        <a class="event-switch" th:href="@{/events}"
+          ><span class="live-dot" th:if="${event != null}"></span
+          ><span
+            th:text="${event != null ? event.name : 'Choose an event'}"
+          ></span
+          ><span aria-hidden="true">⌄</span></a
+        >
+      </div>
+    </header>
+    <main id="main" class="container">
+      <div
+        th:if="${notice != null}"
+        class="alert success"
+        data-notification
+        role="status"
+        th:text="${notice}"
+      ></div>
+      <div
+        th:if="${error != null}"
+        class="alert warning"
+        data-notification
+        role="alert"
+        th:text="${error}"
+      ></div>
+      <th:block th:replace="${content}"></th:block>
+    </main>
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <a
+        th:href="${event != null ? '/events/' + event.id + '/home' : '/'}"
+        th:classappend="${tab == 'home' ? 'active' : ''}"
+        th:attr="aria-current=${tab == 'home' ? 'page' : null}"
+        ><svg><use href="#home" /></svg><span>Home</span></a
+      >
+      <a
+        th:href="${event != null ? '/events/' + event.id + '/volunteers' : '/events'}"
+        th:classappend="${tab == 'volunteers' ? 'active' : ''}"
+        th:attr="aria-current=${tab == 'volunteers' ? 'page' : null}"
+        ><svg><use href="#people" /></svg><span>Volunteers</span></a
+      >
+      <a
+        th:href="${event != null ? '/events/' + event.id + '/schedule' : '/events'}"
+        th:classappend="${tab == 'schedule' ? 'active' : ''}"
+        th:attr="aria-current=${tab == 'schedule' ? 'page' : null}"
+        ><svg><use href="#calendar" /></svg><span>Schedule</span></a
+      >
+      <a
+        th:href="${event != null ? '/events/' + event.id + '/departments' : '/events'}"
+        th:classappend="${tab == 'departments' ? 'active' : ''}"
+        th:attr="aria-current=${tab == 'departments' ? 'page' : null}"
+        ><svg><use href="#departments" /></svg><span>Departments</span></a
+      >
+      <div class="more-navigation">
+      <button
+        type="button"
+        class="more-toggle"
+        aria-expanded="false"
+        aria-controls="more-menu"
+        th:classappend="${tab == 'more' ? 'active' : ''}"
+        ><svg aria-hidden="true"><use href="#more" /></svg><span>More</span></button
+      >
+      <div id="more-menu" class="more-menu" hidden>
+        <a th:href="@{/settings}"><svg aria-hidden="true"><use href="#settings" /></svg><span>Settings</span></a>
+        <a th:href="@{/events}"><svg aria-hidden="true"><use href="#calendar" /></svg><span>Events</span></a>
+        <a th:href="${event != null ? '/events/' + event.id + '/reports' : '/events'}"><svg aria-hidden="true"><use href="#reports" /></svg><span>Reports</span></a>
+      </div>
+      </div>
+    </nav>
+  </body>
+</html>

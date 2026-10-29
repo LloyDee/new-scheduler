@@ -1,0 +1,160 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{layout :: page('Reports', 'more', ~{::section})}"
+>
+  <body>
+    <section>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow" th:text="${event.name}"></p>
+          <h1>Reports</h1>
+          <p class="muted">
+            A clear picture of who’s serving, when, and where.
+          </p>
+        </div>
+        <div class="card-actions no-print">
+          <button class="secondary" type="button" data-print>
+            Print report</button
+          ><a
+            class="button"
+            th:href="@{${base + '/reports.csv'}(type=${reportType},departmentId=${departmentId},date=${date})}"
+            >Download CSV</a
+          >
+        </div>
+      </div>
+      <form
+        class="filter-bar no-print"
+        method="get"
+        th:action="@{${base + '/reports'}}"
+      >
+        <label class="grow"
+          >Report
+          <select name="type">
+            <option
+              value="department"
+              th:selected="${reportType == 'department'}"
+            >
+              Department schedules
+            </option>
+            <option
+              value="volunteer"
+              th:selected="${reportType == 'volunteer'}"
+            >
+              Volunteer assignments
+            </option>
+            <option value="coverage" th:selected="${reportType == 'coverage'}">
+              Staffing coverage
+            </option>
+          </select></label
+        ><label class="grow"
+          >Department
+          <select name="departmentId">
+            <option value="">All departments</option>
+            <option
+              th:each="d : ${departments}"
+              th:value="${d.id}"
+              th:text="${d.name}"
+              th:selected="${departmentId == d.id}"
+            ></option></select></label
+        ><label>Date <input type="date" name="date" th:value="${date}" /></label
+        ><button class="secondary">Apply</button
+        ><a th:href="${base + '/reports'}">Clear</a>
+      </form>
+      <div class="report-context">
+        <h2
+          th:text="${reportType == 'volunteer' ? 'Volunteer assignments' : (reportType == 'coverage' ? 'Staffing coverage' : 'Department schedules')}"
+        ></h2>
+        <p th:if="${date != null}" th:text="${'Date: ' + date}"></p>
+        <th:block th:each="d : ${departments}"
+          ><p
+            th:if="${departmentId == d.id}"
+            th:text="${'Department: ' + d.name}"
+          ></p
+        ></th:block>
+      </div>
+      <div
+        th:if="${reportType == 'department'}"
+        th:insert="~{fragments :: shifts(${rows}, false)}"
+      ></div>
+      <div class="stack" th:if="${reportType == 'volunteer'}">
+        <div class="card empty" th:if="${volunteerRows.isEmpty()}">
+          <p>No volunteers match this report.</p>
+        </div>
+        <article class="card" th:each="v : ${volunteerRows}">
+          <h2 th:text="${v.volunteer.name}"></h2>
+          <p class="muted" th:text="${v.volunteer.congregation}"></p>
+          <p th:if="${v.assignments.isEmpty()}" class="muted">
+            No assignments.
+          </p>
+          <div class="report-assignment" th:each="a : ${v.assignments}">
+            <strong th:text="${a.shift.name + ' — ' + a.shift.department.name}"></strong
+            ><span
+              th:text="${#temporals.format(a.shift.date, 'EEE, MMM d, yyyy')}"
+            ></span
+            ><span
+              ><span
+                th:text="${#temporals.format(a.shift.startTime, timePattern)}"
+              ></span>
+              –
+              <span
+                th:text="${#temporals.format(a.shift.endTime, timePattern)}"
+              ></span
+            ></span>
+          </div>
+        </article>
+      </div>
+      <p class="table-scroll-hint no-print" th:if="${reportType == 'coverage'}" id="coverage-scroll-hint">
+        Swipe left or right on the table to see all staffing details.
+      </p>
+      <div class="card table-wrap" th:if="${reportType == 'coverage'}"
+           role="region" aria-label="Staffing coverage" tabindex="0">
+        <table>
+          <caption class="sr-only">
+            Staffing coverage by shift
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Department / shift</th>
+              <th scope="col">Required</th>
+              <th scope="col">Assigned</th>
+              <th scope="col">Missing</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="row : ${rows}">
+              <td>
+                <strong th:text="${row.shift.name + ' — ' + row.shift.department.name}"></strong
+                ><small th:text="${row.shift.date}"></small
+                ><small
+                  ><span
+                    th:text="${#temporals.format(row.shift.startTime, timePattern)}"
+                  ></span>
+                  –
+                  <span
+                    th:text="${#temporals.format(row.shift.endTime, timePattern)}"
+                  ></span
+                ></small>
+              </td>
+              <td th:text="${row.shift.requiredCount}"></td>
+              <td th:text="${row.assignments.size()}"></td>
+              <td th:text="${row.missing}"></td>
+              <td>
+                <span
+                  class="badge"
+                  th:classappend="${row.statusClass}"
+                  th:text="${row.status}"
+                ></span>
+              </td>
+            </tr>
+            <tr th:if="${rows.isEmpty()}">
+              <td colspan="5">No shifts match this report.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>

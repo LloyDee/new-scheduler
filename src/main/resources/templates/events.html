@@ -1,0 +1,113 @@
+<!doctype html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{layout :: page('Events', 'more', ~{::section})}"
+>
+  <body>
+    <section>
+      <div class="page-heading" th:if="${!events.isEmpty()}">
+        <a class="button" th:href="@{/events(create=true)} + '#editor'">+ Create Event</a>
+      </div>
+      <div class="workspace" th:classappend="${!showEditor ? 'events-list-only' : ''}">
+        <div class="stack">
+          <div class="card welcome" th:if="${events.isEmpty()}">
+            <span class="welcome-symbol" aria-hidden="true">✳</span>
+            <h2>Create an Event</h2>
+            <p>
+              Create an event to organize departments, volunteers, and schedules. Events can only be created by users with Admin or Overseer privileges.
+            </p>
+            <div class="page-heading">
+              <a class="button" th:href="@{/events(create=true)} + '#editor'">+ Create Event</a>
+            </div>
+          </div>
+          <article class="card" th:each="e : ${events}">
+            <div class="card-heading">
+              <span class="eyebrow" th:text="${e.type.label}"></span
+              ><span
+                class="badge success"
+                th:if="${event != null and event.id == e.id}"
+                >Active</span
+              >
+            </div>
+            <h2 th:text="${e.name}"></h2>
+            <p class="muted">
+              <span
+                th:text="${#temporals.format(e.startDate, 'MMM d, yyyy')}"
+              ></span>
+              –
+              <span
+                th:text="${#temporals.format(e.endDate, 'MMM d, yyyy')}"
+              ></span>
+            </p>
+            <p th:if="${!#strings.isEmpty(e.venue)}" th:text="${e.venue}"></p>
+            <div class="card-actions">
+              <form
+                method="post"
+                th:action="@{/events/{id}/select(id=${e.id})}"
+              >
+                <button class="secondary">Open event →</button>
+              </form>
+              <a th:href="@{/events(edit=${e.id})} + '#editor'">Edit</a>
+              <form
+                method="post"
+                th:action="@{/events/{id}/delete(id=${e.id})}"
+                data-confirm="Permanently delete this event and ALL its volunteers, departments, shifts, and assignments?"
+              >
+                <button class="text-button danger">Delete</button>
+              </form>
+            </div>
+          </article>
+        </div>
+        <aside class="card editor" id="editor" th:if="${showEditor}">
+          
+          <h2
+            th:text="${editId == null ? 'Create an event' : 'Edit event'}"
+          ></h2>
+          <form method="post" th:action="@{/events/save}" class="form-stack" data-event-form>
+            <input
+              th:if="${editId != null}"
+              type="hidden"
+              name="id"
+              th:value="${editId}"
+            />
+            <label
+              >Event type
+              <select name="type" required>
+                <option value="">Choose a type…</option>
+                <option
+                  th:each="type : ${types}"
+                  th:value="${type.name()}"
+                  th:text="${type.label}"
+                  th:selected="${draft['type'] == type.name()}"
+                ></option></select
+            ></label>
+            <label data-assembly-field th:hidden="${draft['type'] != 'CIRCUIT_ASSEMBLY'}">
+              Representative
+              <select name="assembly" th:required="${draft['type'] == 'CIRCUIT_ASSEMBLY'}">
+                <option value="">Choose a representative</option>
+                <option value="with Circuit Overseer" th:selected="${draft['assembly'] == 'with Circuit Overseer'}">with Circuit Overseer</option>
+                <option value="with Branch Representative" th:selected="${draft['assembly'] == 'with Branch Representative'}">with Branch Representative</option>
+              </select>
+            </label>
+            <label>Start date
+              <input type="date" name="startDate" required th:value="${draft['startDate']}" />
+            </label>
+            <p class="muted" data-event-preview aria-live="polite"></p>
+            <label
+              >Venue <span class="optional">optional</span
+              ><input name="venue" maxlength="240" th:value="${draft['venue']}"
+            /></label>
+            <button
+              type="submit"
+              th:text="${editId == null ? 'Create event' : 'Save changes'}"
+            ></button
+            ><a th:href="@{/events}"
+              >Cancel</a
+            >
+          </form>
+        </aside>
+      </div>
+    </section>
+  </body>
+</html>

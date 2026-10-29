@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <div th:fragment="shifts(items, editable)" class="shift-list">
+      <div class="empty card" th:if="${items.isEmpty()}">
+        <h3>No shifts to show</h3>
+        <p>Create a shift or adjust your filters to get started.</p>
+      </div>
+      <article
+        class="card shift-card"
+        th:each="row : ${items}"
+        th:id="${'shift-' + row.shift.id}"
+      >
+        <div class="card-heading">
+          <div>
+            <p
+              class="eyebrow"
+              th:text="${#temporals.format(row.shift.date, 'EEE, MMM d, yyyy')}"
+            ></p>
+            <h3 th:text="${row.shift.name}"></h3>
+            <p class="muted" th:text="${row.shift.department.name}"></p>
+          </div>
+          <span
+            class="badge"
+            th:classappend="${row.statusClass}"
+            th:text="${row.status}"
+          ></span>
+        </div>
+        <p class="shift-time">
+          <span
+            th:text="${#temporals.format(row.shift.startTime, timePattern)}"
+          ></span
+          ><span aria-hidden="true"> → </span
+          ><span
+            th:text="${#temporals.format(row.shift.endTime, timePattern)}"
+          ></span>
+        </p>
+        <p class="muted">
+          <strong
+            th:text="${row.assignments.size() + ' / ' + row.shift.requiredCount}"
+          ></strong>
+          volunteers assigned<span
+            th:if="${row.missing > 0}"
+            th:text="${' · ' + row.missing + ' still needed'}"
+          ></span>
+        </p>
+        <p
+          class="preserve"
+          th:if="${!#strings.isEmpty(row.shift.notes)}"
+          th:text="${row.shift.notes}"
+        ></p>
+        <div class="assigned-list" th:if="${!row.assignments.isEmpty()}">
+          <div class="person-chip" th:each="assignment : ${row.assignments}">
+            <span th:text="${assignment.volunteer.name}"></span>
+            <form
+              th:if="${editable}"
+              method="post"
+              th:action="@{${base + '/assignments/' + assignment.id + '/delete'}}"
+              data-confirm="Remove this volunteer from the shift?"
+            >
+              <button
+                class="chip-remove"
+                type="submit"
+                th:attr="aria-label=${'Remove ' + assignment.volunteer.name}"
+              >
+                ×
+              </button>
+            </form>
+          </div>
+        </div>
+        <th:block th:if="${editable}">
+          <form
+            class="assignment-form"
+            th:if="${!assignmentOptions[row.shift.id].isEmpty()}"
+            method="post"
+            th:action="@{${base + '/schedule/' + row.shift.id + '/assign'}}"
+          >
+            <label
+              ><span class="sr-only">Volunteer to assign</span
+              ><select name="volunteerId" required>
+                <option value="">Choose a volunteer…</option>
+                <option
+                  th:each="v : ${assignmentOptions[row.shift.id]}"
+                  th:value="${v.id}"
+                  th:text="${v.name}"
+                ></option></select
+            ></label>
+            <button class="secondary" type="submit">Assign</button>
+          </form>
+          <p class="muted" th:if="${assignmentOptions[row.shift.id].isEmpty()}">
+            No available volunteers in this department for this time window.
+          </p>
+          <div class="card-actions">
+            <a
+              th:href="@{${base + '/schedule'}(edit=${row.shift.id})} + '#editor'"
+              >Edit shift</a
+            >
+            <form
+              method="post"
+              th:action="@{${base + '/schedule/' + row.shift.id + '/delete'}}"
+              data-confirm="Delete this shift and all its assignments?"
+            >
+              <button class="text-button danger">Delete</button>
+            </form>
+          </div>
+        </th:block>
+      </article>
+    </div>
+  </body>
+</html>
