@@ -1,5 +1,15 @@
-package org.volunteers.scheduler;
+package org.volunteers.scheduler.service;
 
+import org.volunteers.scheduler.model.Assignment;
+import org.volunteers.scheduler.model.Department;
+import org.volunteers.scheduler.model.Event;
+import org.volunteers.scheduler.model.Shift;
+import org.volunteers.scheduler.model.Volunteer;
+import org.volunteers.scheduler.repository.Events;
+import org.volunteers.scheduler.repository.Volunteers;
+import org.volunteers.scheduler.repository.Departments;
+import org.volunteers.scheduler.repository.Shifts;
+import org.volunteers.scheduler.repository.Assignments;
 import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -27,15 +37,15 @@ public class SchedulerService {
     public Event event(long id) { return events.findById(id).orElseThrow(SchedulerService::notFound); }
     public Volunteer volunteer(long eventId, long id) {
         Volunteer v = volunteers.findById(id).orElseThrow(SchedulerService::notFound);
-        sameEvent(eventId, v.event.id); return v;
+        sameEvent(eventId, v.getEvent().getId()); return v;
     }
     public Department department(long eventId, long id) {
         Department d = departments.findById(id).orElseThrow(SchedulerService::notFound);
-        sameEvent(eventId, d.event.id); return d;
+        sameEvent(eventId, d.getEvent().getId()); return d;
     }
     public Shift shift(long eventId, long id) {
         Shift s = shifts.findById(id).orElseThrow(SchedulerService::notFound);
-        sameEvent(eventId, s.department.event.id); return s;
+        sameEvent(eventId, s.getDepartment().getEvent().getId()); return s;
     }
     public Snapshot snapshot(long id) {
         return new Snapshot(event(id), volunteers.findByEventIdOrderByNameAscIdAsc(id),
@@ -66,11 +76,11 @@ public class SchedulerService {
         Event e = id == null ? new Event() : event(id);
         if (id != null) {
             require(shifts.findByDepartmentEventIdOrderByDateAscStartTimeAscIdAsc(id).stream()
-                    .noneMatch(s -> s.date.isBefore(start) || s.date.isAfter(end)),
+                    .noneMatch(s -> s.getDate().isBefore(start) || s.getDate().isAfter(end)),
                     "These dates exclude existing shifts. Move or delete those shifts first.");
         }
-        e.name = name; e.type = type; e.startDate = start; e.endDate = end; e.venue = venue;
-        e.assembly = assembly;
+        e.setName(name); e.setType(type); e.setStartDate(start); e.setEndDate(end); e.setVenue(venue);
+        e.setAssembly(assembly);
         return events.save(e);
     }
 
@@ -78,6 +88,10 @@ public class SchedulerService {
     public Volunteer saveVolunteer(long eventId, Long id, Map<String, String> input) {
         Event e = events.lockForVolunteerUpdate(eventId).orElseThrow(SchedulerService::notFound);
         String name = required(input, "name", 160), phone = required(input, "phone", 60);
+        require(phone.matches("[0-9() .-]+"), "Enter a 10-digit phone number.");
+        String phoneDigits = phone.replaceAll("[^0-9]", "");
+        require(phoneDigits.length() == 10, "Enter a 10-digit phone number.");
+        phone = "(" + phoneDigits.substring(0, 3) + ")" + phoneDigits.substring(3, 6) + "-" + phoneDigits.substring(6);
         String email = required(input, "email", 254);
         require(email.isEmpty() || email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"), "Enter a valid email address.");
         String congregation = required(input, "congregation", 160), notes = optional(input, "notes", 2000);
@@ -95,7 +109,7 @@ public class SchedulerService {
             Department selected = department(eventId, departmentId);
             Volunteer.Role role;
             try { role = Volunteer.Role.valueOf(entry.getValue()); }
-            catch (IllegalArgumentException ex) { throw invalid("Choose a valid role for " + selected.name + "."); }
+            catch (IllegalArgumentException ex) { throw invalid("Choose a valid role for " + selected.getName() + "."); }
             departmentRoles.put(selected, role);
         }
         require(!departmentRoles.isEmpty(), "Choose at least one department and its role.");
@@ -103,17 +117,17 @@ public class SchedulerService {
         for (var membership : departmentRoles.entrySet()) {
             Volunteer.Role role = membership.getValue();
             int limit = role == Volunteer.Role.OVERSEER ? 1 : role == Volunteer.Role.ASSISTANT_OVERSEER ? 2 : Integer.MAX_VALUE;
-            long count = existing.stream().filter(other -> !Objects.equals(other.id, id))
-                    .filter(other -> other.departmentRoles.entrySet().stream().anyMatch(entry ->
-                            entry.getKey().id.equals(membership.getKey().id) && entry.getValue() == role)).count();
-            require(count < limit, membership.getKey().name + " allows at most " + limit + " "
+            long count = existing.stream().filter(other -> !Objects.equals(other.getId(), id))
+                    .filter(other -> other.getDepartmentRoles().entrySet().stream().anyMatch(entry ->
+                            entry.getKey().getId().equals(membership.getKey().getId()) && entry.getValue() == role)).count();
+            require(count < limit, membership.getKey().getName() + " allows at most " + limit + " "
                     + role.getLabel() + (limit == 1 ? "." : "s."));
         }
         Volunteer v = id == null ? new Volunteer() : volunteer(eventId, id);
-        v.event = e; v.name = name; v.phone = phone; v.email = email; v.congregation = congregation; v.notes = notes;
-        v.privilege = privilege;
-        v.departmentRoles.clear();
-        v.departmentRoles.putAll(departmentRoles);
+        v.setEvent(e); v.setName(name); v.setPhone(phone); v.setEmail(email); v.setCongregation(congregation); v.setNotes(notes);
+        v.setPrivilege(privilege);
+        v.getDepartmentRoles().clear();
+        v.getDepartmentRoles().putAll(departmentRoles);
         return volunteers.save(v);
     }
 
@@ -122,7 +136,7 @@ public class SchedulerService {
         Event e = event(eventId);
         String name = required(input, "name", 160), description = optional(input, "description", 2000);
         Department d = id == null ? new Department() : department(eventId, id);
-        d.event = e; d.name = name; d.description = description;
+        d.setEvent(e); d.setName(name); d.setDescription(description);
         return departments.save(d);
     }
 
@@ -130,9 +144,9 @@ public class SchedulerService {
     public Shift saveShift(long eventId, Long id, Map<String, String> input) {
         Event e = event(eventId);
         Department d = department(eventId, number(input, "departmentId"));
-        LocalDate date = e.type == Event.Type.CIRCUIT_ASSEMBLY ? e.startDate : date(input, "date");
+        LocalDate date = e.getType() == Event.Type.CIRCUIT_ASSEMBLY ? e.getStartDate() : date(input, "date");
         LocalTime start = time(input, "startTime"), end = time(input, "endTime");
-        if (e.type == Event.Type.CIRCUIT_ASSEMBLY) {
+        if (e.getType() == Event.Type.CIRCUIT_ASSEMBLY) {
             for (LocalTime value : List.of(start, end)) {
                 require(!value.isBefore(LocalTime.of(6, 0)) && !value.isAfter(LocalTime.of(17, 30)),
                         "Shift times must be between 06:00 AM and 05:30 PM.");
@@ -140,23 +154,23 @@ public class SchedulerService {
                         "Shift times must use 10-minute increments.");
             }
         }
-        require(!date.isBefore(e.startDate) && !date.isAfter(e.endDate), "Shift date must be within the event dates.");
+        require(!date.isBefore(e.getStartDate()) && !date.isAfter(e.getEndDate()), "Shift date must be within the event dates.");
         require(end.isAfter(start), "End time must be after start time. Overnight shifts are not supported.");
         long required = number(input, "requiredCount");
         require(required >= 1 && required <= 10000, "Required volunteers must be between 1 and 10,000.");
         String notes = optional(input, "notes", 2000);
         String name = required(input, "name", 160);
         Shift s = id == null ? new Shift() : shift(eventId, id);
-        if (id != null && !(date.equals(s.date) && start.equals(s.startTime) && end.equals(s.endTime))) {
+        if (id != null && !(date.equals(s.getDate()) && start.equals(s.getStartTime()) && end.equals(s.getEndTime()))) {
             List<Assignment> all = assignments.findByShiftDepartmentEventIdOrderByIdAsc(eventId);
             Set<Long> assigned = new HashSet<>();
-            all.stream().filter(a -> a.shift.id.equals(id)).forEach(a -> assigned.add(a.volunteer.id));
-            List<String> conflicts = all.stream().filter(a -> assigned.contains(a.volunteer.id) && !a.shift.id.equals(id)
-                    && overlaps(a.shift, date, start, end)).map(SchedulerService::conflictDescription).toList();
+            all.stream().filter(a -> a.getShift().getId().equals(id)).forEach(a -> assigned.add(a.getVolunteer().getId()));
+            List<String> conflicts = all.stream().filter(a -> assigned.contains(a.getVolunteer().getId()) && !a.getShift().getId().equals(id)
+                    && overlaps(a.getShift(), date, start, end)).map(SchedulerService::conflictDescription).toList();
             if (!conflicts.isEmpty() && !confirmed(input)) throw new OverlapException(String.join("; ", conflicts));
         }
-        s.name = name; s.department = d; s.date = date; s.startTime = start; s.endTime = end;
-        s.requiredCount = (int) required; s.notes = notes;
+        s.setName(name); s.setDepartment(d); s.setDate(date); s.setStartTime(start); s.setEndTime(end);
+        s.setRequiredCount((int) required); s.setNotes(notes);
         return shifts.save(s);
     }
 
@@ -166,23 +180,23 @@ public class SchedulerService {
         Volunteer v = volunteer(eventId, volunteerId);
         require(!assignments.existsByShiftIdAndVolunteerId(shiftId, volunteerId), "This volunteer is already assigned to this shift.");
         List<String> conflicts = assignments.findByShiftDepartmentEventIdOrderByIdAsc(eventId).stream()
-                .filter(a -> a.volunteer.id.equals(volunteerId) && overlaps(a.shift, s.date, s.startTime, s.endTime))
+                .filter(a -> a.getVolunteer().getId().equals(volunteerId) && overlaps(a.getShift(), s.getDate(), s.getStartTime(), s.getEndTime()))
                 .map(SchedulerService::conflictDescription).toList();
         if (!conflicts.isEmpty() && !confirmed) throw new OverlapException(String.join("; ", conflicts));
-        Assignment a = new Assignment(); a.shift = s; a.volunteer = v; assignments.saveAndFlush(a);
+        Assignment a = new Assignment(); a.setShift(s); a.setVolunteer(v); assignments.saveAndFlush(a);
     }
 
     @Transactional
     public void unassign(long eventId, long id) {
         Assignment a = assignments.findById(id).orElseThrow(SchedulerService::notFound);
-        sameEvent(eventId, a.shift.department.event.id); assignments.delete(a);
+        sameEvent(eventId, a.getShift().getDepartment().getEvent().getId()); assignments.delete(a);
     }
 
     @Transactional
     public void deleteVolunteer(long eventId, long id) {
         Volunteer v = volunteer(eventId, id);
         assignments.deleteAll(assignments.findByShiftDepartmentEventIdOrderByIdAsc(eventId).stream()
-                .filter(a -> a.volunteer.id.equals(id)).toList());
+                .filter(a -> a.getVolunteer().getId().equals(id)).toList());
         assignments.flush(); volunteers.delete(v);
     }
 
@@ -190,7 +204,7 @@ public class SchedulerService {
     public void deleteShift(long eventId, long id) {
         Shift s = shift(eventId, id);
         assignments.deleteAll(assignments.findByShiftDepartmentEventIdOrderByIdAsc(eventId).stream()
-                .filter(a -> a.shift.id.equals(id)).toList());
+                .filter(a -> a.getShift().getId().equals(id)).toList());
         assignments.flush(); shifts.delete(s); shifts.flush();
     }
 
@@ -198,10 +212,10 @@ public class SchedulerService {
     public void deleteDepartment(long eventId, long id) {
         Department d = department(eventId, id);
         volunteers.findByEventIdOrderByNameAscIdAsc(eventId).forEach(v ->
-                v.departmentRoles.keySet().removeIf(selected -> selected.id.equals(id)));
+                v.getDepartmentRoles().keySet().removeIf(selected -> selected.getId().equals(id)));
         volunteers.flush();
         shifts.findByDepartmentEventIdOrderByDateAscStartTimeAscIdAsc(eventId).stream()
-                .filter(s -> s.department.id.equals(id)).toList().forEach(s -> deleteShift(eventId, s.id));
+                .filter(s -> s.getDepartment().getId().equals(id)).toList().forEach(s -> deleteShift(eventId, s.getId()));
         departments.delete(d); departments.flush();
     }
 
@@ -217,14 +231,14 @@ public class SchedulerService {
     }
 
     static boolean overlaps(Shift s, LocalDate date, LocalTime start, LocalTime end) {
-        return s.date.equals(date) && start.isBefore(s.endTime) && end.isAfter(s.startTime);
+        return s.getDate().equals(date) && start.isBefore(s.getEndTime()) && end.isAfter(s.getStartTime());
     }
     private static String conflictDescription(Assignment a) {
-        return a.volunteer.name + " — " + a.shift.department.name + ", " + a.shift.date + " "
-                + a.shift.startTime + "–" + a.shift.endTime;
+        return a.getVolunteer().getName() + " — " + a.getShift().getDepartment().getName() + ", " + a.getShift().getDate() + " "
+                + a.getShift().getStartTime() + "–" + a.getShift().getEndTime();
     }
-    static boolean confirmed(Map<String, String> input) { return "true".equals(input.get("confirmOverlap")); }
-    static long number(Map<String, String> input, String key) {
+    public static boolean confirmed(Map<String, String> input) { return "true".equals(input.get("confirmOverlap")); }
+    public static long number(Map<String, String> input, String key) {
         try { return Long.parseLong(input.getOrDefault(key, "")); }
         catch (NumberFormatException ex) { throw invalid("Enter a valid value for " + key + "."); }
     }
@@ -255,23 +269,23 @@ public class SchedulerService {
                            List<Shift> shifts, List<Assignment> assignments) {
         public List<Volunteer> availableVolunteers(Shift shift) {
             Set<Long> busy = new HashSet<>();
-            assignments.stream().filter(a -> overlaps(a.shift, shift.date, shift.startTime, shift.endTime))
-                    .forEach(a -> busy.add(a.volunteer.id));
-            return volunteers.stream().filter(v -> !busy.contains(v.id))
-                    .filter(v -> v.departmentRoles.keySet().stream()
-                            .anyMatch(d -> d.id.equals(shift.department.id))).toList();
+            assignments.stream().filter(a -> overlaps(a.getShift(), shift.getDate(), shift.getStartTime(), shift.getEndTime()))
+                    .forEach(a -> busy.add(a.getVolunteer().getId()));
+            return volunteers.stream().filter(v -> !busy.contains(v.getId()))
+                    .filter(v -> v.getDepartmentRoles().keySet().stream()
+                            .anyMatch(d -> d.getId().equals(shift.getDepartment().getId()))).toList();
         }
 
         public List<ShiftRow> rows() {
             return shifts.stream().map(s -> new ShiftRow(s, assignments.stream()
-                    .filter(a -> a.shift.id.equals(s.id)).toList())).toList();
+                    .filter(a -> a.getShift().getId().equals(s.getId())).toList())).toList();
         }
     }
     public record ShiftRow(Shift shift, List<Assignment> assignments) {
-        public int getMissing() { return Math.max(0, shift.requiredCount - assignments.size()); }
+        public int getMissing() { return Math.max(0, shift.getRequiredCount() - assignments.size()); }
         public String getStatus() {
-            return assignments.size() < shift.requiredCount ? "Underfilled"
-                    : assignments.size() == shift.requiredCount ? "Filled" : "Overfilled";
+            return assignments.size() < shift.getRequiredCount() ? "Underfilled"
+                    : assignments.size() == shift.getRequiredCount() ? "Filled" : "Overfilled";
         }
         public String getStatusClass() { return getMissing() > 0 ? "warning" : "success"; }
     }

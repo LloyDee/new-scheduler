@@ -1,5 +1,9 @@
-package org.volunteers.scheduler;
+package org.volunteers.scheduler.bootstrap;
 
+import org.volunteers.scheduler.model.Department;
+import org.volunteers.scheduler.model.Event;
+import org.volunteers.scheduler.model.Volunteer;
+import org.volunteers.scheduler.service.SchedulerService;
 import java.util.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,13 +22,13 @@ public class TestVolunteerData implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (service.events().stream().anyMatch(e -> MARKER.equals(e.venue))) return;
+        if (service.events().stream().anyMatch(e -> MARKER.equals(e.getVenue()))) return;
         Event event = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION",
                 "startDate", "2027-06-04", "venue", MARKER));
-        event.name = "Volunteer Test Event";
+        event.setName("Volunteer Test Event");
         List<Department> departments = new ArrayList<>();
         for (String name : List.of("Attendants", "Parking", "Cleaning", "First Aid", "Information")) {
-            departments.add(service.saveDepartment(event.id, null, Map.of("name", name)));
+            departments.add(service.saveDepartment(event.getId(), null, Map.of("name", name)));
         }
         Random random = new Random(20261028L);
         String[] first = {"Alex", "Jamie", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Sam", "Cameron", "Drew",
@@ -42,14 +46,14 @@ public class TestVolunteerData implements CommandLineRunner {
                     : i < 15 ? Volunteer.Role.ASSISTANT_OVERSEER : Volunteer.Role.VOLUNTEER;
             Map<String, String> input = new HashMap<>(Map.of("name", name,
                     "phone", String.format("202-555-%04d", 100 + i),
-                    "email", "test.volunteer." + (i + 1) + "@example.com",
+                    "email", "test.getVolunteer()." + (i + 1) + "@example.com",
                     "congregation", congregations[random.nextInt(congregations.length)],
                     "privilege", (i < 15 ? Volunteer.Privilege.ELDER
                             : Volunteer.Privilege.values()[random.nextInt(Volunteer.Privilege.values().length)]).name(),
-                    "departmentRole_" + departments.get(departmentIndex).id, role.name()));
+                    "departmentRole_" + departments.get(departmentIndex).getId(), role.name()));
             // Exactly ten people have two departments; leadership stays in their primary department.
-            if (i >= 15 && i < 25) input.put("departmentRole_" + departments.get((departmentIndex + 1) % 5).id, "VOLUNTEER");
-            service.saveVolunteer(event.id, null, input);
+            if (i >= 15 && i < 25) input.put("departmentRole_" + departments.get((departmentIndex + 1) % 5).getId(), "VOLUNTEER");
+            service.saveVolunteer(event.getId(), null, input);
         }
         System.out.println("Created Volunteer Test Event: 100 volunteers, 10 with multiple departments; each department has 1 Overseer and 2 Assistant Overseers.");
     }

@@ -2,7 +2,7 @@
 <html
   lang="en"
   xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{layout :: page('Departments', 'departments', ~{::section})}"
+  th:replace="~{shared/layout :: page('Departments', 'departments', ~{::section})}"
 >
   <body>
     <section>
@@ -19,7 +19,7 @@
               <a th:href="${base + '/departments'}">Close</a>
             </div>
             <div
-              th:replace="~{fragments :: shifts(${departmentRows}, false)}"
+              th:replace="~{shared/fragments :: shifts(${departmentRows}, false)}"
             ></div>
           </div>
           <div class="card empty" th:if="${departments.isEmpty()}">

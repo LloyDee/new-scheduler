@@ -1,3 +1,14 @@
+document.querySelectorAll("[data-phone]").forEach((input) => {
+  const formatPhone = () => {
+    const digits = input.value.replace(/[^0-9]/g, "");
+    const valid = /^[0-9() .-]+$/.test(input.value) && digits.length === 10;
+    input.setCustomValidity(input.value && !valid ? "Enter a 10-digit phone number." : "");
+    if (valid) input.value = `(${digits.slice(0, 3)})${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+  input.addEventListener("input", formatPhone);
+  formatPhone();
+});
+
 document.querySelectorAll("[data-auto-submit]").forEach((select) => {
   select.addEventListener("change", () => select.form.requestSubmit());
 });

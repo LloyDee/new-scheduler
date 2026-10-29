@@ -2,7 +2,7 @@
 <html
   lang="en"
   xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{layout :: page('Reports', 'more', ~{::section})}"
+  th:replace="~{shared/layout :: page('Reports', 'more', ~{::section})}"
 >
   <body>
     <section>
@@ -76,7 +76,7 @@
       </div>
       <div
         th:if="${reportType == 'department'}"
-        th:insert="~{fragments :: shifts(${rows}, false)}"
+        th:insert="~{shared/fragments :: shifts(${rows}, false)}"
       ></div>
       <div class="stack" th:if="${reportType == 'volunteer'}">
         <div class="card empty" th:if="${volunteerRows.isEmpty()}">

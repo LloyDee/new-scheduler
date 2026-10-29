@@ -1,4 +1,4 @@
-package org.volunteers.scheduler;
+package org.volunteers.scheduler.config;
 
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

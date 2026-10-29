@@ -2,7 +2,7 @@
 <html
   lang="en"
   xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{layout :: page('Schedule', 'schedule', ~{::section})}"
+  th:replace="~{shared/layout :: page('Schedule', 'schedule', ~{::section})}"
 >
   <body>
     <section>
@@ -38,7 +38,7 @@
             class="list-count"
             th:text="${rows.size() + ' shifts · ordered by date and time'}"
           ></p>
-          <div th:replace="~{fragments :: shifts(${rows}, true)}"></div>
+          <div th:replace="~{shared/fragments :: shifts(${rows}, true)}"></div>
         </div>
         <aside class="card editor" id="editor" th:if="${showEditor}">
           <p class="eyebrow">SHIFT DETAILS</p>

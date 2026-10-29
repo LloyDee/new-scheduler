@@ -2,12 +2,12 @@
 <html
         lang="en"
         xmlns:th="http://www.thymeleaf.org"
-        th:replace="~{layout :: page('Settings', 'more', ~{::section})}"
+        th:replace="~{shared/layout :: page('Settings', 'more', ~{::section})}"
 >
 <body>
 <section>
-    <link rel="stylesheet" th:href="@{/settings-app.css}" />
-    <script defer th:src="@{/settings-app.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/settings-app.css}" />
+    <script defer th:src="@{/js/settings-app.js}"></script>
     <div class="page-heading">
         <div>
             <p class="eyebrow">MAKE YOURSELF AT HOME</p>

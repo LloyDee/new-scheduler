@@ -1,4 +1,4 @@
-package org.volunteers.scheduler;
+package org.volunteers.scheduler.model;
 
 import jakarta.persistence.*;
 import java.util.LinkedHashMap;
@@ -18,20 +18,20 @@ public class Volunteer {
         Privilege(String label) { this.label = label; }
         public String getLabel() { return label; }
     }
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
-    @ManyToOne(optional = false) Event event;
-    @Column(nullable = false, length = 160) String name;
-    @Column(length = 60) String phone;
-    @Column(length = 254) String email;
-    @Column(length = 160) String congregation;
-    @Column(length = 2000) String notes;
-    @Enumerated(EnumType.STRING) Privilege privilege;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @ManyToOne(optional = false) private Event event;
+    @Column(nullable = false, length = 160) private String name;
+    @Column(length = 60) private String phone;
+    @Column(length = 254) private String email;
+    @Column(length = 160) private String congregation;
+    @Column(length = 2000) private String notes;
+    @Enumerated(EnumType.STRING) private Privilege privilege;
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "volunteer_department_roles", joinColumns = @JoinColumn(name = "volunteer_id"))
     @MapKeyJoinColumn(name = "department_id")
     @Enumerated(EnumType.STRING)
     @Column(name = "department_role", nullable = false)
-    Map<Department, Role> departmentRoles = new LinkedHashMap<>();
+    private Map<Department, Role> departmentRoles = new LinkedHashMap<>();
     public Privilege getPrivilege() { return privilege; }
     public Map<Department, Role> getDepartmentRoles() { return departmentRoles; }
     public Long getId() { return id; }
@@ -41,4 +41,12 @@ public class Volunteer {
     public String getEmail() { return email; }
     public String getCongregation() { return congregation; }
     public String getNotes() { return notes; }
+    public void setEvent(Event event) { this.event = event; }
+    public void setName(String name) { this.name = name; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public void setEmail(String email) { this.email = email; }
+    public void setCongregation(String congregation) { this.congregation = congregation; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public void setPrivilege(Privilege privilege) { this.privilege = privilege; }
+    public void setDepartmentRoles(Map<Department, Role> departmentRoles) { this.departmentRoles = departmentRoles; }
 }

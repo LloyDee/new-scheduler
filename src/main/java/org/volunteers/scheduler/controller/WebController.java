@@ -1,5 +1,11 @@
-package org.volunteers.scheduler;
+package org.volunteers.scheduler.controller;
 
+import org.volunteers.scheduler.model.Assignment;
+import org.volunteers.scheduler.model.Department;
+import org.volunteers.scheduler.model.Event;
+import org.volunteers.scheduler.model.Shift;
+import org.volunteers.scheduler.model.Volunteer;
+import org.volunteers.scheduler.service.SchedulerService;
 import jakarta.servlet.http.*;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
@@ -38,7 +44,7 @@ public class WebController {
     @GetMapping("/")
     String index(HttpSession session) {
         Long id = (Long) session.getAttribute("activeEvent");
-        return id == null ? "home" : "redirect:/events/" + id + "/home";
+        return id == null ? "pages/home" : "redirect:/events/" + id + "/home";
     }
 
     @GetMapping("/events")
@@ -48,21 +54,21 @@ public class WebController {
         Map<String, String> defaults = new HashMap<>();
         if (edit != null) {
             Event e = service.event(edit);
-            defaults.putAll(Map.of("name", e.name, "type", e.type.name(), "startDate", e.startDate.toString(),
-                    "endDate", e.endDate.toString(), "venue", e.venue));
-            defaults.put("assembly", e.assembly == null ? "" : e.assembly);
+            defaults.putAll(Map.of("name", e.getName(), "type", e.getType().name(), "startDate", e.getStartDate().toString(),
+                    "endDate", e.getEndDate().toString(), "venue", e.getVenue()));
+            defaults.put("assembly", e.getAssembly() == null ? "" : e.getAssembly());
         }
         draft(model, defaults); model.addAttribute("editId", edit);
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error"));
-        return "events";
+        return "pages/events";
     }
 
     @PostMapping("/events/save")
     String saveEvent(@RequestParam(required = false) Long id, @RequestParam Map<String, String> input,
                      RedirectAttributes flash, HttpSession session) {
         return attempt(() -> {
-            Event e = service.saveEvent(id, input); session.setAttribute("activeEvent", e.id);
-            return "/events/" + e.id + "/home";
+            Event e = service.saveEvent(id, input); session.setAttribute("activeEvent", e.getId());
+            return "/events/" + e.getId() + "/home";
         }, id == null ? "/events?create=true" : "/events" + editQuery(id), input, flash, "Event saved.");
     }
 
@@ -84,9 +90,9 @@ public class WebController {
         model.addAttribute("missing", data.rows().stream().mapToInt(SchedulerService.ShiftRow::getMissing).sum());
         LocalDateTime now = LocalDateTime.now();
         model.addAttribute("upcoming", data.rows().stream().filter(r ->
-                        LocalDateTime.of(r.shift().date, r.shift().endTime).isAfter(now))
+                        LocalDateTime.of(r.shift().getDate(), r.shift().getEndTime()).isAfter(now))
                 .limit(5).toList());
-        return "home";
+        return "pages/home";
     }
 
     @GetMapping("/events/{eventId}/volunteers")
@@ -100,27 +106,27 @@ public class WebController {
         model.addAttribute("q", q);
         model.addAttribute("departmentId", departmentId);
         model.addAttribute("filteredVolunteers", data.volunteers().stream()
-                .filter(v -> departmentId == null || v.departmentRoles.keySet().stream()
-                        .anyMatch(d -> d.id.equals(departmentId))).filter(v ->
-                (v.name + " " + v.congregation + " " + v.phone + " " + v.email).toLowerCase(Locale.ROOT).contains(query)).toList());
+                .filter(v -> departmentId == null || v.getDepartmentRoles().keySet().stream()
+                        .anyMatch(d -> d.getId().equals(departmentId))).filter(v ->
+                (v.getName() + " " + v.getCongregation() + " " + v.getPhone() + " " + v.getEmail()).toLowerCase(Locale.ROOT).contains(query)).toList());
         Map<String, String> defaults = new HashMap<>();
         if (edit != null) {
             Volunteer v = service.volunteer(eventId, edit);
-            defaults.putAll(Map.of("name", v.name, "phone", v.phone, "email", v.email,
-                    "congregation", v.congregation, "notes", v.notes));
-            defaults.put("privilege", v.privilege == null ? "" : v.privilege.name());
-            v.departmentRoles.forEach((department, role) -> defaults.put("departmentRole_" + department.id, role.name()));
+            defaults.putAll(Map.of("name", v.getName(), "phone", v.getPhone(), "email", v.getEmail(),
+                    "congregation", v.getCongregation(), "notes", v.getNotes()));
+            defaults.put("privilege", v.getPrivilege() == null ? "" : v.getPrivilege().name());
+            v.getDepartmentRoles().forEach((department, role) -> defaults.put("departmentRole_" + department.getId(), role.name()));
         }
         if (view != null) {
             model.addAttribute("selectedVolunteer", service.volunteer(eventId, view));
             model.addAttribute("personalRows", data.rows().stream().filter(r -> r.assignments().stream()
-                    .anyMatch(a -> a.volunteer.id.equals(view))).toList());
+                    .anyMatch(a -> a.getVolunteer().getId().equals(view))).toList());
         }
         draft(model, defaults); model.addAttribute("editId", edit);
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error") && model.containsAttribute("draft"));
         model.addAttribute("volunteerRoles", Volunteer.Role.values());
         model.addAttribute("volunteerPrivileges", Volunteer.Privilege.values());
-        return "volunteers";
+        return "pages/volunteers";
     }
 
     @PostMapping("/events/{eventId}/volunteers/save")
@@ -145,31 +151,31 @@ public class WebController {
         Map<String, String> defaults = new HashMap<>();
         if (edit != null) {
             Department d = service.department(eventId, edit);
-            defaults.putAll(Map.of("name", d.name, "description", d.description));
+            defaults.putAll(Map.of("name", d.getName(), "description", d.getDescription()));
         }
         Map<Long, Map<String, Object>> departmentDetails = new HashMap<>();
         for (Department d : data.departments()) {
             List<Volunteer> members = data.volunteers().stream()
-                    .filter(v -> v.departmentRoles.keySet().stream().anyMatch(dept -> dept.id.equals(d.id))).toList();
+                    .filter(v -> v.getDepartmentRoles().keySet().stream().anyMatch(dept -> dept.getId().equals(d.getId()))).toList();
             Map<String, Object> details = new HashMap<>();
             details.put("volunteerCount", members.size());
             for (Volunteer.Role role : List.of(Volunteer.Role.OVERSEER, Volunteer.Role.ASSISTANT_OVERSEER)) {
                 List<String> names = members.stream()
-                        .filter(v -> v.departmentRoles.entrySet().stream()
-                                .anyMatch(entry -> entry.getKey().id.equals(d.id) && entry.getValue() == role))
+                        .filter(v -> v.getDepartmentRoles().entrySet().stream()
+                                .anyMatch(entry -> entry.getKey().getId().equals(d.getId()) && entry.getValue() == role))
                         .map(Volunteer::getName).toList();
                 details.put(role.name(), names.isEmpty() ? "Not assigned" : String.join(", ", names));
             }
-            departmentDetails.put(d.id, details);
+            departmentDetails.put(d.getId(), details);
         }
         model.addAttribute("departmentDetails", departmentDetails);
         if (view != null) {
             model.addAttribute("selectedDepartment", service.department(eventId, view));
-            model.addAttribute("departmentRows", data.rows().stream().filter(r -> r.shift().department.id.equals(view)).toList());
+            model.addAttribute("departmentRows", data.rows().stream().filter(r -> r.shift().getDepartment().getId().equals(view)).toList());
         }
         draft(model, defaults); model.addAttribute("editId", edit);
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error") && model.containsAttribute("draft"));
-        return "departments";
+        return "pages/departments";
     }
 
     @PostMapping("/events/{eventId}/departments/save")
@@ -194,21 +200,21 @@ public class WebController {
         var data = prepare(eventId, model, session);
         filter(data, departmentId, date, model);
         Map<Long, List<Volunteer>> assignmentOptions = new HashMap<>();
-        data.shifts().forEach(s -> assignmentOptions.put(s.id, data.availableVolunteers(s)));
+        data.shifts().forEach(s -> assignmentOptions.put(s.getId(), data.availableVolunteers(s)));
         model.addAttribute("assignmentOptions", assignmentOptions);
-        Map<String, String> defaults = new HashMap<>(Map.of("date", data.event().startDate.toString(), "requiredCount", "1"));
+        Map<String, String> defaults = new HashMap<>(Map.of("date", data.event().getStartDate().toString(), "requiredCount", "1"));
         if (departmentId != null) defaults.put("departmentId", departmentId.toString());
         if (edit != null) {
             Shift s = service.shift(eventId, edit);
-            defaults.putAll(Map.of("name", s.getName(), "departmentId", s.department.id.toString(), "date", s.date.toString(),
-                    "startTime", s.startTime.toString(), "endTime", s.endTime.toString(),
-                    "requiredCount", Integer.toString(s.requiredCount), "notes", s.notes));
+            defaults.putAll(Map.of("name", s.getName(), "departmentId", s.getDepartment().getId().toString(), "date", s.getDate().toString(),
+                    "startTime", s.getStartTime().toString(), "endTime", s.getEndTime().toString(),
+                    "requiredCount", Integer.toString(s.getRequiredCount()), "notes", s.getNotes()));
         }
         draft(model, defaults); model.addAttribute("editId", edit);
         model.addAttribute("shiftTimes", java.util.stream.IntStream.rangeClosed(0, 69)
                 .mapToObj(i -> java.time.LocalTime.of(6, 0).plusMinutes(i * 10L)).toList());
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error") && model.containsAttribute("draft"));
-        return "schedule";
+        return "pages/schedule";
     }
 
     @PostMapping("/events/{eventId}/schedule/save")
@@ -247,11 +253,11 @@ public class WebController {
 
     @GetMapping("/events/{eventId}/more")
     String more(@PathVariable long eventId, Model model, HttpSession session) {
-        prepare(eventId, model, session); return "more";
+        prepare(eventId, model, session); return "pages/more";
     }
 
     @GetMapping("/settings")
-    String settings() { return "settings"; }
+    String settings() { return "pages/settings"; }
 
     @PostMapping("/settings")
     String settings(@RequestParam(defaultValue = "12") String timeFormat, HttpServletResponse response,
@@ -270,7 +276,7 @@ public class WebController {
         var rows = filter(data, departmentId, date, model);
         model.addAttribute("reportType", reportType(type));
         model.addAttribute("volunteerRows", volunteerReport(data, rows, departmentId != null || date != null));
-        return "reports";
+        return "pages/reports";
     }
 
     @GetMapping("/events/{eventId}/reports.csv")
@@ -282,15 +288,15 @@ public class WebController {
         if (selected.equals("volunteer")) {
             csvLine(out, "Volunteer", "Congregation", "Department", "Shift", "Date", "Start", "End");
             for (VolunteerReport v : volunteerReport(data, rows, departmentId != null || date != null)) {
-                if (v.assignments().isEmpty()) csvLine(out, v.volunteer().name, v.volunteer().congregation, "Unassigned", "", "", "", "");
-                for (Assignment a : v.assignments()) csvLine(out, v.volunteer().name, v.volunteer().congregation,
-                        a.shift.department.name, a.shift.getName(), a.shift.date, a.shift.startTime, a.shift.endTime);
+                if (v.assignments().isEmpty()) csvLine(out, v.volunteer().getName(), v.volunteer().getCongregation(), "Unassigned", "", "", "", "");
+                for (Assignment a : v.assignments()) csvLine(out, v.volunteer().getName(), v.volunteer().getCongregation(),
+                        a.getShift().getDepartment().getName(), a.getShift().getName(), a.getShift().getDate(), a.getShift().getStartTime(), a.getShift().getEndTime());
             }
         } else {
             csvLine(out, "Department", "Shift", "Date", "Start", "End", "Required", "Assigned", "Missing", "Status", "Volunteers");
-            for (var r : rows) csvLine(out, r.shift().department.name, r.shift().getName(), r.shift().date, r.shift().startTime,
-                    r.shift().endTime, r.shift().requiredCount, r.assignments().size(), r.getMissing(), r.getStatus(),
-                    String.join("; ", r.assignments().stream().map(a -> a.volunteer.name).toList()));
+            for (var r : rows) csvLine(out, r.shift().getDepartment().getName(), r.shift().getName(), r.shift().getDate(), r.shift().getStartTime(),
+                    r.shift().getEndTime(), r.shift().getRequiredCount(), r.assignments().size(), r.getMissing(), r.getStatus(),
+                    String.join("; ", r.assignments().stream().map(a -> a.getVolunteer().getName()).toList()));
         }
         return ResponseEntity.ok().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"event-" + eventId + "-" + selected + ".csv\"")
@@ -308,14 +314,14 @@ public class WebController {
         model.addAttribute("rows", rows); model.addAttribute("departmentId", departmentId); model.addAttribute("date", date); return rows;
     }
     private List<SchedulerService.ShiftRow> filtered(SchedulerService.Snapshot data, Long departmentId, LocalDate date) {
-        if (departmentId != null) service.department(data.event().id, departmentId);
-        return data.rows().stream().filter(r -> departmentId == null || r.shift().department.id.equals(departmentId))
-                .filter(r -> date == null || r.shift().date.equals(date)).toList();
+        if (departmentId != null) service.department(data.event().getId(), departmentId);
+        return data.rows().stream().filter(r -> departmentId == null || r.shift().getDepartment().getId().equals(departmentId))
+                .filter(r -> date == null || r.shift().getDate().equals(date)).toList();
     }
     private static List<VolunteerReport> volunteerReport(SchedulerService.Snapshot data, List<SchedulerService.ShiftRow> rows, boolean filtered) {
         List<Assignment> selected = rows.stream().flatMap(r -> r.assignments().stream()).toList();
         return data.volunteers().stream().map(v -> new VolunteerReport(v, selected.stream()
-                .filter(a -> a.volunteer.id.equals(v.id)).toList())).filter(v -> !filtered || !v.assignments().isEmpty()).toList();
+                .filter(a -> a.getVolunteer().getId().equals(v.getId())).toList())).filter(v -> !filtered || !v.assignments().isEmpty()).toList();
     }
     private static String reportType(String value) {
         if (!Set.of("department", "volunteer", "coverage").contains(value)) throw new IllegalArgumentException("Unknown report type.");

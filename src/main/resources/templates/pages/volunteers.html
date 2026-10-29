@@ -2,7 +2,7 @@
 <html
   lang="en"
   xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{layout :: page('Volunteers', 'volunteers', ~{::section})}"
+  th:replace="~{shared/layout :: page('Volunteers', 'volunteers', ~{::section})}"
 >
   <body>
     <section>
@@ -33,7 +33,7 @@
               No assignments yet.
             </p>
             <div
-              th:replace="~{fragments :: shifts(${personalRows}, false)}"
+              th:replace="~{shared/fragments :: shifts(${personalRows}, false)}"
             ></div>
           </div>
           <p
@@ -112,6 +112,8 @@
                 name="phone"
                 required
                 type="tel"
+                data-phone
+                placeholder="(813)516-0335"
                 maxlength="60"
                 autocomplete="tel"
                 th:value="${draft['phone']}" /></label
