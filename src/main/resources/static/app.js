@@ -1,3 +1,7 @@
+document.querySelectorAll("[data-auto-submit]").forEach((select) => {
+  select.addEventListener("change", () => select.form.requestSubmit());
+});
+
 document.querySelectorAll("[data-department-picker]").forEach((picker) => {
   const departmentSelect = picker.querySelector("[data-department-select]");
   if (!departmentSelect) return;

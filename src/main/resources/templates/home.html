@@ -8,13 +8,9 @@
     <section>
       <div class="page-heading">
         <div>
-          <p class="eyebrow">YOUR EVENT AT A GLANCE</p>
-          <h1>Let’s get everyone ready.</h1>
-          <p class="muted">A little organization. A shared purpose.</p>
+          <p class="eyebrow" th:text="${event != null ? event.name : ''}"></p>
+          <p class="muted" th:text="${event != null and event.type.name() == 'CIRCUIT_ASSEMBLY' ? event.assembly : ''}"></p>
         </div>
-        <a th:if="${event != null}" class="button" th:href="${base + '/schedule?create=true#editor'}"
-          >+ Create shift</a
-        >
       </div>
       <article class="card weather-card" aria-label="San Antonio weather" data-weather>
         <script defer th:src="@{/weather.js}"></script>

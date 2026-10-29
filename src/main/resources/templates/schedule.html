@@ -7,20 +7,13 @@
   <body>
     <section>
       <div class="page-heading">
-        <div>
-          <p class="eyebrow">A SHARED PURPOSE, A CLEAR PLAN</p>
-          <h1>Schedule</h1>
-          <p class="muted">
-            Build your shifts and give every volunteer a place.
-          </p>
-        </div>
         <a class="button" th:href="${base + '/schedule?create=true#editor'}"
           >+ Create shift</a
-        >
+          >
       </div>
       <div class="card alert warning" th:if="${pending != null}">
         <h2>Assign despite the overlap?</h2>
-        <p>
+        <p>ordered by date and time
           The conflicting assignment is listed above. Confirm only if the
           volunteer can cover both shifts.
         </p>

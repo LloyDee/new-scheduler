@@ -23,6 +23,7 @@ public class Event {
     public Long getId() { return id; }
     public String getName() { return name; }
     public Type getType() { return type; }
+    public String getAssembly() { return assembly; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
     public String getVenue() { return venue; }

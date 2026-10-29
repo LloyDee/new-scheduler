@@ -7,14 +7,9 @@
   <body>
     <section>
       <div class="page-heading">
-        <div>
-          <p class="eyebrow">EVERY TEAM HAS A PURPOSE</p>
-          <h1>Departments</h1>
-          <p class="muted">Organize your teams and see where help is needed.</p>
-        </div>
         <a class="button" th:href="${base + '/departments?create=true#editor'}"
           >+ Add department</a
-        >
+          >
       </div>
       <div class="workspace" th:classappend="${!showEditor ? 'list-only' : ''}">
         <div class="stack">

@@ -58,15 +58,7 @@
       <div class="header-inner">
         <a class="brand" th:href="@{/}"
           ><img class="brand-mark" th:src="@{/images/logo.gif}" alt="" />
-          <span>Scheduler App</span></a
-        >
-        <a class="event-switch" th:href="@{/events}"
-          ><span class="live-dot" th:if="${event != null}"></span
-          ><span
-            th:text="${event != null ? event.name : 'Choose an event'}"
-          ></span
-          ><span aria-hidden="true">⌄</span></a
-        >
+          <span>Scheduler Application</span></a>
       </div>
     </header>
     <main id="main" class="container">
