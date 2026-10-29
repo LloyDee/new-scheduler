@@ -50,7 +50,7 @@ public class SchedulerService {
         try { type = Event.Type.valueOf(input.getOrDefault("type", "")); }
         catch (IllegalArgumentException ex) { throw invalid("Choose an event type."); }
         LocalDate start = date(input, "startDate");
-        LocalDate end = type == Event.Type.REGIONAL_CONVENTION ? start.plusDays(3) : start;
+        LocalDate end = type == Event.Type.REGIONAL_CONVENTION ? start.plusDays(2) : start;
         String assembly = "";
         String name;
         if (type == Event.Type.REGIONAL_CONVENTION) {

@@ -57,8 +57,8 @@
     <header class="app-header">
       <div class="header-inner">
         <a class="brand" th:href="@{/}"
-          ><span class="brand-mark">g.</span
-          ><span>Gather<small>VOLUNTEER SCHEDULER</small></span></a
+          ><img class="brand-mark" th:src="@{/images/logo.gif}" alt="" />
+          <span>Scheduler App</span></a
         >
         <a class="event-switch" th:href="@{/events}"
           ><span class="live-dot" th:if="${event != null}"></span

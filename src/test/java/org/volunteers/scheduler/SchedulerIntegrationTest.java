@@ -46,7 +46,7 @@ class SchedulerIntegrationTest {
         for (String date : List.of("2026-08-31", "2026-09-01", "2026-12-31")) {
             Event created = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", date));
             assertThat(created.name).isEqualTo((date.equals("2026-08-31") ? "2026" : "2027") + " Regional Convention");
-            assertThat(created.endDate).isEqualTo(LocalDate.parse(date).plusDays(3));
+            assertThat(created.endDate).isEqualTo(LocalDate.parse(date).plusDays(2));
         }
         for (String representative : List.of("with Circuit Overseer", "with Branch Representative")) {
             Event created = service.saveEvent(null, Map.of("type", "CIRCUIT_ASSEMBLY", "startDate", "2026-10-28", "assembly", representative));
@@ -55,6 +55,16 @@ class SchedulerIntegrationTest {
         }
         assertThatThrownBy(() -> service.saveEvent(null, Map.of("type", "CIRCUIT_ASSEMBLY", "startDate", "2026-10-28")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test void regionalConventionRunsFridayThroughSunday() {
+        Event created = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", "2026-10-30"));
+        assertThat(created.endDate).isEqualTo(LocalDate.of(2026, 11, 1));
+        assertThatThrownBy(() -> service.saveShift(created.id, null, Map.of(
+                "departmentId", service.saveDepartment(created.id, null, Map.of("name", "Attendants")).id.toString(),
+                "date", "2026-11-02", "startTime", "09:00", "endTime", "10:00", "requiredCount", "1", "name", "Morning shift")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Shift date must be within the event dates.");
     }
 
     @Test void eventEditorOnlyAppearsWhenOpened() throws Exception {

@@ -65,7 +65,7 @@ if (eventForm) {
     const start = new Date(`${startDate.value}T00:00:00Z`);
     if (Number.isNaN(start.getTime())) return;
     const end = new Date(start);
-    end.setUTCDate(end.getUTCDate() + (isAssembly ? 0 : 3));
+    end.setUTCDate(end.getUTCDate() + (isAssembly ? 0 : 2));
     const year = start.getUTCFullYear() + (start.getUTCMonth() >= 8 ? 1 : 0);
     const name = isAssembly ? `Circuit Assembly ${assembly.value}` : `${year} Regional Convention`;
     preview.textContent = `${name.trim()} · End date: ${end.toISOString().slice(0, 10)}`;
