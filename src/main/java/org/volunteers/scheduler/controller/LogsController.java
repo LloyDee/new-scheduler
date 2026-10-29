@@ -66,16 +66,8 @@ public class LogsController {
     }
     @PostMapping("/api/device-visits")
     @ResponseBody
-    ResponseEntity<Void> record(@CookieValue(name = "schedulerDevice", required = false) String id,
-                                @RequestBody Map<String, String> data, HttpServletRequest request, HttpServletResponse response) {
-        if (id == null || !id.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
-            id = UUID.randomUUID().toString();
-            Cookie cookie = new Cookie("schedulerDevice", id);
-            cookie.setPath(request.getContextPath().isEmpty() ? "/" : request.getContextPath());
-            cookie.setHttpOnly(true); cookie.setSecure(request.isSecure());
-            cookie.setMaxAge(365 * 24 * 60 * 60); cookie.setAttribute("SameSite", "Lax");
-            response.addCookie(cookie);
-        }
+    ResponseEntity<Void> record(@RequestBody Map<String, String> data, HttpServletRequest request) {
+        String id = (String) request.getAttribute("schedulerDeviceId");
         service.record(id, data);
         return ResponseEntity.noContent().header("Cache-Control", "no-store").build();
     }

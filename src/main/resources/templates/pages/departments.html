@@ -28,22 +28,33 @@
               Add your first department, then create its shifts in the schedule.
             </p>
           </div>
-          <article class="card" th:each="d : ${departments}" th:with="details=${departmentDetails[d.id]}">
-            <p class="eyebrow">DEPARTMENT</p>
+          <article class="card department-card" th:each="d : ${departments}" th:with="details=${departmentDetails[d.id]}">
+            <div class="department-card-header">
+              <p class="eyebrow">DEPARTMENT</p>
+              <span class="department-icon-line department-volunteer-count">
+                <svg aria-hidden="true"><use href="#people" /></svg>
+                <span class="sr-only">Volunteers: </span><span th:text="${details['volunteerCount']}"></span>
+              </span>
+            </div>
             <h2 th:text="${d.name}"></h2>
             <p
               class="preserve muted"
               th:if="${!#strings.isEmpty(d.description)}"
               th:text="${d.description}"
             ></p>
-            <p><strong>Volunteers:</strong> <span th:text="${details['volunteerCount']}"></span></p>
-            <p><strong>Overseer:</strong> <span th:text="${details['OVERSEER']}"></span></p>
-            <p><strong>Assistant Overseers:</strong> <span th:text="${details['ASSISTANT_OVERSEER']}"></span></p>
+            <div class="department-leadership">
+              <strong>Overseer:</strong>
+              <p class="department-icon-line" th:each="name : ${details['OVERSEER']}"><svg aria-hidden="true"><use href="#people" /></svg><span th:text="${name}"></span></p>
+              <p class="muted" th:if="${#lists.isEmpty(details['OVERSEER'])}">Not assigned</p>
+            </div>
+            <div class="department-leadership">
+              <strong>Assistant Overseers:</strong>
+              <p class="department-icon-line" th:each="name : ${details['ASSISTANT_OVERSEER']}"><svg aria-hidden="true"><use href="#people" /></svg><span th:text="${name}"></span></p>
+              <p class="muted" th:if="${#lists.isEmpty(details['ASSISTANT_OVERSEER'])}">Not assigned</p>
+            </div>
             <div class="card-actions">
               <a th:href="@{${base + '/departments'}(view=${d.id})}"
                 >View coverage →</a
-              ><a th:href="@{${base + '/schedule'}(departmentId=${d.id})}"
-                >Schedule</a
               ><a
                 th:href="@{${base + '/departments'}(edit=${d.id})} + '#editor'"
                 >Edit</a

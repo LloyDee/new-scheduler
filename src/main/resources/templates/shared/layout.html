@@ -19,6 +19,8 @@
     <script th:src="@{/js/theme.js}"></script>
     <link rel="stylesheet" th:href="@{/css/app.css}" />
     <script defer th:src="@{/js/app.js}"></script>
+    <script defer th:src="@{/js/notifications.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/notifications.css}" />
   </head>
   <body>
     <svg
@@ -26,6 +28,7 @@
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
+      <symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></symbol>
       <symbol id="home" viewBox="0 0 24 24">
         <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-8H9v8H4a1 1 0 0 1-1-1Z" />
       </symbol>
@@ -69,8 +72,21 @@
         <a class="brand" th:href="@{/}"
           ><img class="brand-mark" th:src="@{/images/logo.gif}" alt="" />
           <span>Scheduler Application</span></a>
+        <button type="button" class="notification-bell" id="notification-bell" aria-label="Notifications" aria-haspopup="dialog" aria-controls="notification-dialog" th:attr="data-url=@{/api/notifications}">
+          <svg aria-hidden="true"><use href="#bell" /></svg>
+          <span class="notification-badge" id="notification-badge" hidden aria-hidden="true"></span>
+        </button>
       </div>
     </header>
+    <dialog id="notification-dialog" class="notification-dialog" aria-labelledby="notification-title">
+      <div class="notification-content">
+        <h2 id="notification-title">Notifications</h2>
+        <p id="notification-status" role="status" aria-live="polite"></p>
+        <div id="notification-messages"></div>
+        <button type="button" class="secondary" id="notification-retry" hidden>Retry</button>
+      </div>
+      <form method="dialog" class="notification-footer"><button autofocus>Close</button></form>
+    </dialog>
     <main id="main" class="container">
       <div
         th:if="${notice != null}"

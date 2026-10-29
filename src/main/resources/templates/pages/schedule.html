@@ -34,6 +34,16 @@
       </div>
       <div class="workspace" th:classappend="${!showEditor ? 'list-only' : ''}">
         <div class="stack">
+          <form class="filter-bar" method="get" th:action="@{${base + '/schedule'}}">
+            <input th:if="${date != null}" type="hidden" name="date" th:value="${date}" />
+            <label><span class="sr-only">Filter by department</span>
+              <select name="departmentId" aria-label="Filter by department" data-auto-submit>
+                <option value="">All departments</option>
+                <option th:each="department : ${departments}" th:value="${department.id}"
+                        th:text="${department.name}" th:selected="${departmentId == department.id}"></option>
+              </select>
+            </label>
+          </form>
           <p
             class="list-count"
             th:text="${rows.size() + ' shifts · ordered by date and time'}"

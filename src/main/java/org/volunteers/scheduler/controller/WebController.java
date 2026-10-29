@@ -176,7 +176,7 @@ public class WebController {
                         .filter(v -> v.getDepartmentRoles().entrySet().stream()
                                 .anyMatch(entry -> entry.getKey().getId().equals(d.getId()) && entry.getValue() == role))
                         .map(Volunteer::getName).toList();
-                details.put(role.name(), names.isEmpty() ? "Not assigned" : String.join(", ", names));
+                details.put(role.name(), names);
             }
             departmentDetails.put(d.getId(), details);
         }
@@ -269,7 +269,10 @@ public class WebController {
     }
 
     @GetMapping("/settings")
-    String settings() { return "pages/settings"; }
+    String settings(HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-store");
+        return "pages/settings";
+    }
 
     @PostMapping("/settings")
     String settings(@RequestParam(defaultValue = "12") String timeFormat, HttpServletResponse response,

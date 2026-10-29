@@ -254,6 +254,43 @@ legend {
     overflow-wrap: anywhere
 }
 
+.department-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.department-icon-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.department-icon-line svg {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--green);
+}
+
+.department-volunteer-count {
+    flex-shrink: 0;
+}
+
+.department-leadership {
+    margin: 12px 0;
+}
+
+.department-leadership p {
+    margin: 6px 0 0;
+}
+
 .stack, .shift-list {
     display: grid;
     gap: 16px
