@@ -99,6 +99,7 @@ public class WebController {
     String volunteers(@PathVariable long eventId, @RequestParam(defaultValue = "") String q,
                       @RequestParam(required = false) Long departmentId,
                       @RequestParam(required = false) Long edit, @RequestParam(required = false) Long view,
+                      @RequestParam(required = false) Long assignments,
                       @RequestParam(defaultValue = "false") boolean create,
                       Model model, HttpSession session) {
         var data = prepare(eventId, model, session);
@@ -128,6 +129,11 @@ public class WebController {
         dialogVolunteers.keySet().forEach(id -> volunteerAssignments.put(id, data.rows().stream()
                 .filter(row -> row.assignments().stream().anyMatch(a -> a.getVolunteer().getId().equals(id))).toList()));
         model.addAttribute("volunteerAssignments", volunteerAssignments);
+        if (assignments != null) {
+            model.addAttribute("assignmentVolunteer", service.volunteer(eventId, assignments));
+            model.addAttribute("personalRows", data.rows().stream()
+                    .filter(row -> row.assignments().stream().anyMatch(a -> a.getVolunteer().getId().equals(assignments))).toList());
+        }
         draft(model, defaults); model.addAttribute("editId", edit);
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error") && model.containsAttribute("draft"));
         model.addAttribute("volunteerRoles", Volunteer.Role.values());

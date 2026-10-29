@@ -422,8 +422,8 @@ class SchedulerIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String card = response.substring(response.indexOf("<article class=\"card volunteer-card\""));
         card = card.substring(0, card.indexOf("</article>"));
-        assertThat(card).contains("data-volunteer-dialog", "Edit", "Delete", "#privilege", "#departments")
-                .doesNotContain("alex@example.com", "Private", "Assignments", "tel:", "mailto:");
+        assertThat(card).contains("data-volunteer-dialog", "Assignments →", "Edit", "Delete", "#privilege", "#departments")
+                .doesNotContain("alex@example.com", "Private", "tel:", "mailto:");
         String dialog = response.substring(response.indexOf("id=\"volunteer-dialog-" + volunteer.getId() + "\""));
         dialog = dialog.substring(0, dialog.indexOf("</dialog>"));
         assertThat(dialog).contains("data-open-on-load=\"true\"", "mailto:alex@example.com", "Private &lt;note&gt;", "9:00 AM", "Close")
@@ -442,6 +442,34 @@ class SchedulerIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("No assignments yet.")));
         Event otherEvent = event("Other", "REGIONAL_CONVENTION");
         mvc.perform(get("/events/" + otherEvent.getId() + "/volunteers").param("view", volunteer.getId().toString()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test void inlineAssignmentsPreserveFiltersAndDoNotOpenDialog() throws Exception {
+        service.assign(event.getId(), shift.getId(), volunteer.getId(), false);
+        String path = "/events/" + event.getId() + "/volunteers";
+        var response = mvc.perform(get(path).param("assignments", volunteer.getId().toString())
+                .param("departmentId", department.getId().toString()).param("q", "Alex"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(response).contains("id=\"volunteer-assignments\"", "Alex Rivera’s assignments", "Morning shift",
+                "assignments=" + volunteer.getId(), "departmentId=" + department.getId() + "&amp;q=Alex")
+                .doesNotContain("data-open-on-load=\"true\"");
+        String panel = response.substring(response.indexOf("id=\"volunteer-assignments\""));
+        assertThat(panel.substring(0, panel.indexOf("Close</a>")))
+                .contains("href=\"" + path + "?departmentId=" + department.getId() + "&amp;q=Alex\"");
+        mvc.perform(get(path).param("view", volunteer.getId().toString()))
+                .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("id=\"volunteer-assignments\""))));
+    }
+
+    @Test void inlineAssignmentsHandleEmptyAndRejectOtherEvents() throws Exception {
+        String path = "/events/" + event.getId() + "/volunteers";
+        var result = mvc.perform(get(path).param("assignments", volunteer.getId().toString()))
+                .andExpect(status().isOk()).andReturn();
+        assertThat((List<?>) result.getModelAndView().getModel().get("personalRows")).isEmpty();
+        assertThat(result.getResponse().getContentAsString()).contains("No assignments yet.");
+        Event other = event("Other", "REGIONAL_CONVENTION");
+        mvc.perform(get("/events/" + other.getId() + "/volunteers").param("assignments", volunteer.getId().toString()))
                 .andExpect(status().isNotFound());
     }
 
