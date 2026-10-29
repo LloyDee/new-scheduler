@@ -42,19 +42,19 @@
         <a class="card stat" th:href="${base + '/volunteers'}"
           ><span class="eyebrow">VOLUNTEERS</span
           ><strong th:text="${volunteers.size()}"></strong
-          ><span>People ready to help →</span></a
+          ><span>Friends Ready to Serve →</span></a
         ><a class="card stat" th:href="${base + '/departments'}"
           ><span class="eyebrow">DEPARTMENTS</span
           ><strong th:text="${departments.size()}"></strong
-          ><span>Teams working together →</span></a
+          ><span>United in Jehovah’s Service →</span></a
         ><a class="card stat" th:href="${base + '/schedule'}"
           ><span class="eyebrow">SHIFTS</span
           ><strong th:text="${allRows.size()}"></strong
-          ><span>Moments to make a difference →</span></a
+          ><span>Opportunities to Show Love →</span></a
         ><a class="card stat" th:href="${base + '/reports?type=coverage'}"
           ><span class="eyebrow">OPEN POSITIONS</span
           ><strong th:text="${missing}"></strong
-          ><span>Assignments still needed →</span></a
+          ><span>More Willing Hands Needed →</span></a
         >
       </div>
       <div class="home-shifts" th:if="${event != null}">
