@@ -114,7 +114,11 @@
                 type="tel"
                 data-phone
                 placeholder="(813)516-0335"
-                maxlength="60"
+                inputmode="numeric"
+                minlength="13"
+                maxlength="13"
+                pattern="\([0-9]{3}\)[0-9]{3}-[0-9]{4}"
+                title="Enter 10 digits, formatted as (813)516-0335."
                 autocomplete="tel"
                 th:value="${draft['phone']}" /></label
             ><label

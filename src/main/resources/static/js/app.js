@@ -1,9 +1,22 @@
 document.querySelectorAll("[data-phone]").forEach((input) => {
   const formatPhone = () => {
-    const digits = input.value.replace(/[^0-9]/g, "");
-    const valid = /^[0-9() .-]+$/.test(input.value) && digits.length === 10;
-    input.setCustomValidity(input.value && !valid ? "Enter a 10-digit phone number." : "");
-    if (valid) input.value = `(${digits.slice(0, 3)})${digits.slice(3, 6)}-${digits.slice(6)}`;
+    const caret = input.selectionStart;
+    const digitsBeforeCaret = input.value.slice(0, caret).replace(/[^0-9]/g, "").length;
+    const digits = input.value.replace(/[^0-9]/g, "").slice(0, 10);
+    let formatted = digits ? `(${digits.slice(0, 3)}` : "";
+    if (digits.length > 3) formatted += `)${digits.slice(3, 6)}`;
+    if (digits.length > 6) formatted += `-${digits.slice(6)}`;
+    input.value = formatted;
+    if (document.activeElement === input && caret !== null) {
+      let position = 0;
+      let count = 0;
+      while (position < formatted.length && count < digitsBeforeCaret) {
+        if (/[0-9]/.test(formatted[position])) count++;
+        position++;
+      }
+      input.setSelectionRange(position, position);
+    }
+    input.setCustomValidity(digits.length && digits.length !== 10 ? "Enter a 10-digit phone number." : "");
   };
   input.addEventListener("input", formatPhone);
   formatPhone();
