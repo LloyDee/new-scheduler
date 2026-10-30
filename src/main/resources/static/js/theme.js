@@ -12,10 +12,13 @@
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themes[theme]);
   };
   apply(current);
-  document.addEventListener('DOMContentLoaded', () => {
+  const initialized = new WeakSet();
+  const initializeThemeOptions = () => {
     const options = document.querySelectorAll('input[name="theme"]');
     options.forEach((option) => {
       option.checked = option.value === current;
+      if (initialized.has(option)) return;
+      initialized.add(option);
       option.addEventListener('change', () => {
         if (!option.checked || !Object.hasOwn(themes, option.value)) return;
         current = option.value;
@@ -26,5 +29,11 @@
         if (status) status.textContent = `${current[0].toUpperCase() + current.slice(1)} theme applied${saved ? ' and saved.' : '. Browser storage is unavailable; this choice applies to this page.'}`;
       });
     });
-  });
+  };
+  document.addEventListener('scheduler:page', initializeThemeOptions);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeThemeOptions);
+  } else {
+    initializeThemeOptions();
+  }
 })();
