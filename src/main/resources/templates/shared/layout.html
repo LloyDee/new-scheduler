@@ -73,7 +73,6 @@
           ><img class="brand-mark" th:src="@{/images/logo.gif}" alt="" />
           <span class="brand-text">
             <span th:text="${appVersion.versionName}">Scheduler Application</span>
-            <small class="app-version" th:text="${appVersion.copyright}"></small>
           </span></a>
         <button type="button" class="notification-bell" id="notification-bell" aria-label="Notifications" aria-haspopup="dialog" aria-controls="notification-dialog" th:attr="data-url=@{/api/notifications}">
           <svg aria-hidden="true"><use href="#bell" /></svg>

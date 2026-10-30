@@ -13,6 +13,9 @@
             <button>Unlock Logs</button>
         </form>
     </div>
+    <th:block th:if="${unlocked}">
+        <p class="list-count" th:text="${logs.totalElements + ' logs'}"></p>
+    </th:block>
     <div th:if="${unlocked}" class="card logs-results">
         <p th:if="${logs.empty}">No device visits recorded yet.</p>
         <div class="logs-table" th:unless="${logs.empty}">

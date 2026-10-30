@@ -118,7 +118,7 @@ class SchedulerIntegrationTest {
                 base + "/schedule", base + "/schedule?edit=" + shift.getId(),
                 base + "/reports", base + "/reports?type=volunteer", base + "/reports?type=coverage")) {
             mvc.perform(get(path)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Scheduler Application")))
-                    .andExpect(content().string(org.hamcrest.Matchers.containsString("<small class=\"app-version\">\u00a9 2027 v.1.67.2</small>")));
+                    .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<small class=\"app-version\">"))));
         }
         mvc.perform(get(base + "/schedule")).andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Alex Rivera")));
