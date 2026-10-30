@@ -7,8 +7,8 @@
 <body>
 <section class="volunteers-page">
     <link rel="stylesheet" th:href="@{/css/volunteers.css}"/>
-    <div class="page-heading">
-        <a th:if="${canManage}" class="button" th:href="${base + '/volunteers?create=true#editor'}">+ Add Volunteers</a>
+    <div class="page-heading" th:if="${canManage}">
+        <a class="button" th:href="${base + '/volunteers?create=true#editor'}">+ Add Volunteers</a>
     </div>
     <dialog class="volunteer-dialog" th:each="v : ${dialogVolunteers}" th:id="${'volunteer-dialog-' + v.id}"
             th:attr="aria-labelledby=${'volunteer-title-' + v.id},data-open-on-load=${openVolunteerId == v.id}">
@@ -159,6 +159,7 @@
                 <p>Add your first volunteer or adjust your search or department filter.</p>
             </div>
             <article class="card volunteer-card" th:each="v : ${filteredVolunteers}">
+                <p class="muted" th:if="${revealedVolunteerId == v.id}">Your card — shown in addition to the current results.</p>
                 <a class="volunteer-card-main"
                    th:href="@{${base + '/volunteers'}(view=${v.id},departmentId=${departmentId},q=${q})}"
                    th:attr="data-volunteer-dialog=${'volunteer-dialog-' + v.id},aria-controls=${'volunteer-dialog-' + v.id},aria-label=${'View details for ' + v.name}"
@@ -170,7 +171,7 @@
               ></span>
                         <div>
                             <span class="badge" th:if="${v.eventAdministrator}">Event administrator</span>
-                            <h2 th:classappend="${ownVolunteerIds.contains(v.id) ? 'current-user-name' : ''}" th:text="${v.name}"></h2>
+                            <h2 th:id="${'volunteer-name-' + v.id}" tabindex="-1" th:classappend="${ownVolunteerIds.contains(v.id) ? 'current-user-name' : ''}" th:text="${v.name}"></h2>
                             <p class="muted"><span th:text="${v.congregation}"></span></p>
                         </div>
                     </div>

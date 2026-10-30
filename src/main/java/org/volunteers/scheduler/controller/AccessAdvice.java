@@ -27,6 +27,11 @@ public class AccessAdvice {
         model.addAttribute("canCreateEvent", access.canManage(session, null));
         String name = access.displayName(session);
         model.addAttribute("currentUserFirstName", name == null || name.isBlank() ? null : name.strip().split("\\s+", 2)[0]);
+        Long volunteerId = eventId == null ? null : access.ownVolunteerId(session, eventId);
+        if (volunteerId != null) {
+            model.addAttribute("currentVolunteerId", volunteerId);
+            model.addAttribute("currentVolunteerUrl", "/events/" + eventId + "/volunteers?view=" + volunteerId);
+        }
         model.addAttribute("signup", false);
     }
 }

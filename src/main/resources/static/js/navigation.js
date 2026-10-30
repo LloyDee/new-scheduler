@@ -47,7 +47,10 @@
       if (scroll) window.scrollTo(...scroll);
       else if (url.hash) {
         const target = document.getElementById(decodeURIComponent(url.hash.slice(1)));
-        if (target) target.scrollIntoView();
+        if (target) {
+          target.scrollIntoView();
+          target.focus({ preventScroll: true });
+        }
         else window.scrollTo(0, 0);
       } else window.scrollTo(0, 0);
       status.textContent = document.title;

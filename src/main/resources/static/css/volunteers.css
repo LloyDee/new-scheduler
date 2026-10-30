@@ -3,6 +3,8 @@
     overflow-wrap: anywhere;
 }
 
+[id^="volunteer-name-"] { scroll-margin-top: 100px; }
+
 .volunteer-card-main {
     display: block;
     color: inherit;
@@ -40,7 +42,7 @@
     gap: 8px;
 }
 
-.volunteers-page .volunteer-icon-line svg {
+.volunteers-page .volunteer-icon-line svg, .volunteer-dialog .volunteer-icon-line svg {
     width: 19px;
     height: 19px;
     margin-top: 2px;

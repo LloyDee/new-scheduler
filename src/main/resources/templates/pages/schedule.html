@@ -7,8 +7,8 @@
   <body>
     <section>
       <link rel="stylesheet" th:href="@{/css/settings-app.css}" />
-      <div class="page-heading">
-        <a th:if="${canManage}" class="button" th:href="${base + '/schedule?create=true#editor'}"
+      <div class="page-heading" th:if="${canManage}">
+        <a class="button" th:href="${base + '/schedule?create=true#editor'}"
           >+ Create shift</a
           >
       </div>

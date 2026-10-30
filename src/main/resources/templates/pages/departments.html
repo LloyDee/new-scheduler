@@ -6,8 +6,8 @@
 >
   <body>
     <section>
-      <div class="page-heading">
-        <a th:if="${canManage}" class="button" th:href="${base + '/departments?create=true#editor'}"
+      <div class="page-heading" th:if="${canManage}">
+        <a class="button" th:href="${base + '/departments?create=true#editor'}"
           >+ Add department</a
           >
       </div>

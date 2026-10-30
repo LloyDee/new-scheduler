@@ -4,7 +4,7 @@ const { readFileSync } = require('node:fs');
 const vm = require('node:vm');
 const script = readFileSync('src/main/resources/static/js/volunteers.js', 'utf8');
 
-function setup(autoOpen = false) {
+function setup(autoOpen = false, scrollGreeting = false, visible = true, reducedMotion = false) {
   const listeners = {};
   const scroll = { scrollTop: 100 };
   const dialog = {
@@ -17,14 +17,34 @@ function setup(autoOpen = false) {
     focus() { this.focused = true; },
     addEventListener: (name, handler) => { listeners.click = handler; }
   };
-  vm.runInNewContext(script, { document: {
+  const name = { focus() { this.focused = true; }, scrollIntoView(options) { this.behavior = options.behavior; } };
+  if (scrollGreeting) trigger.dataset.volunteerScroll = 'volunteer-name-1';
+  vm.runInNewContext(script, { window: { matchMedia: () => ({ matches: reducedMotion }) }, document: {
     addEventListener() {},
     querySelectorAll: () => [trigger],
-    getElementById: id => id === dialog.id ? dialog : null,
+    getElementById: id => id === 'volunteer-name-1' ? (visible ? name : null) : id === dialog.id ? dialog : null,
     querySelector: selector => selector.includes('data-open-on-load') && autoOpen ? dialog : null
   } });
-  return { dialog, trigger, listeners, scroll };
+  return { dialog, trigger, listeners, scroll, name };
 }
+
+test('Volunteers greeting scrolls and focuses the visible name without opening dialog', async () => {
+  for (const reduced of [false, true]) {
+    const { listeners, dialog, name } = setup(false, true, true, reduced);
+    let prevented = false;
+    await listeners.click({ button: 0, preventDefault() { prevented = true; } });
+    assert.equal(prevented, true);
+    assert.equal(name.focused, true);
+    assert.equal(name.behavior, reduced ? 'instant' : 'smooth');
+    assert.equal(dialog.open, false);
+  }
+});
+
+test('hidden Volunteers name follows reveal link instead of opening dialog', async () => {
+  const { listeners, dialog } = setup(false, true, false);
+  await listeners.click({ button: 0, preventDefault() { assert.fail('reveal navigation prevented'); } });
+  assert.equal(dialog.open, false);
+});
 
 test('opens card dialog, resets scroll and restores focus on close', () => {
   const { dialog, trigger, listeners, scroll } = setup();
@@ -120,4 +140,68 @@ test('Enter retries a failed search and navigation cancels pending work', async 
   assert.equal(state.requests[1].options.signal.aborted, true);
   state.respond(1); await tick();
   assert.equal(state.replaced, 0);
+});
+
+function setupRemoteDialog() {
+  const events = {}, requests = [], attributes = new Map();
+  const status = { textContent: '', setAttribute() {} };
+  const dialog = { open: false, matches: () => true, removeAttribute() {},
+    addEventListener(name, fn) { this[name] = fn; },
+    querySelector: () => ({ scrollTop: 50 }), showModal() { this.open = true; } };
+  let inserted, click;
+  const trigger = { dataset: { volunteerDialog: 'volunteer-dialog-1' },
+    href: 'https://scheduler.test/events/1/volunteers?view=1',
+    hasAttribute: name => name === 'data-own-volunteer-link',
+    setAttribute: (name, value) => attributes.set(name, value),
+    removeAttribute: name => attributes.delete(name), after() {}, focus() { this.focused = true; },
+    addEventListener: (_, fn) => { click = fn; } };
+  vm.runInNewContext(script, { document: {
+    addEventListener(name, fn) { events[name] = fn; },
+    querySelectorAll: () => [trigger], querySelector: () => null,
+    createElement: () => status,
+    getElementById: id => id === 'main' ? { append(node) { inserted = node; } } : inserted
+  }, AbortController, AbortSignal,
+    HTMLDialogElement: class { showModal() {} },
+    fetch: (url, options) => new Promise(resolve => requests.push({ url, options, resolve })),
+    DOMParser: class { parseFromString() { return { getElementById: () => dialog }; } }
+  });
+  return { events, requests, attributes, status, dialog, trigger,
+    click: () => click({ button: 0, preventDefault() {} }),
+    respond: (ok = true) => requests.at(-1).resolve({ ok, text: async () => '' }) };
+}
+
+test('greeting fetches once, opens in place, reuses dialog and restores focus', async () => {
+  const state = setupRemoteDialog();
+  const pending = state.click();
+  await state.click();
+  assert.equal(state.requests.length, 1);
+  assert.equal(state.attributes.get('aria-busy'), 'true');
+  assert.equal(state.requests[0].options.headers['X-Scheduler-Section'], 'main');
+  state.respond(); await pending;
+  assert.equal(state.dialog.open, true);
+  assert.equal(state.status.textContent, '');
+  assert.equal(state.attributes.has('aria-busy'), false);
+  state.dialog.open = false; state.dialog.close();
+  assert.equal(state.trigger.focused, true);
+  await state.click();
+  assert.equal(state.dialog.open, true);
+  assert.equal(state.requests.length, 1);
+});
+
+test('failed greeting load offers retry', async () => {
+  const state = setupRemoteDialog();
+  let pending = state.click(); state.respond(false); await pending;
+  assert.match(state.status.textContent, /retry/);
+  pending = state.click(); state.respond(); await pending;
+  assert.equal(state.requests.length, 2);
+  assert.equal(state.dialog.open, true);
+});
+
+test('navigation cancels greeting load and ignores late response', async () => {
+  const state = setupRemoteDialog();
+  const pending = state.click();
+  state.events['scheduler:before-page']();
+  assert.equal(state.requests[0].options.signal.aborted, true);
+  state.respond(); await pending;
+  assert.equal(state.dialog.open, false);
 });

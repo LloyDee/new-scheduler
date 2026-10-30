@@ -49,14 +49,32 @@ class PhoneLoginIntegrationTest {
         service.saveVolunteer(event.getId(), volunteer.getId(), input);
         mvc.perform(get("/events").session(session())).andExpect(status().isOk())
             .andExpect(model().attribute("currentUserFirstName", "Lloyd"))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>Hi Lloyd</span>")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(">Hi Lloyd</a>")));
+    }
+    @Test void greetingLinksAcrossTabsAndSectionResponses() throws Exception {
+        for (String path : List.of(base() + "/home", base() + "/volunteers", base() + "/departments",
+                base() + "/schedule", base() + "/reports", base() + "/more", "/settings", "/events")) {
+            for (boolean section : List.of(false, true)) {
+                var request = get(path).session(session());
+                if (section) request.header("X-Scheduler-Section", "main");
+                mvc.perform(request).andExpect(status().isOk())
+                    .andExpect(model().attribute("currentVolunteerId", volunteer.getId()))
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("data-own-volunteer-link")))
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString(path.endsWith("/volunteers")
+                        ? "revealSelf=true#volunteer-name-" + volunteer.getId()
+                        : base() + "/volunteers?view=" + volunteer.getId())));
+            }
+        }
+        var noEvent = session(); noEvent.removeAttribute("activeEvent");
+        mvc.perform(get("/settings").session(noEvent)).andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("data-own-volunteer-link"))));
     }
     @Test void greetingLinksToOwnEventCardEvenWhenSearchAndDepartmentHideIt() throws Exception {
         var otherDepartment = service.saveDepartment(event.getId(), null, Map.of("name", "Parking"));
         mvc.perform(get(base() + "/volunteers").session(session()).param("q", "no-match")
                 .param("departmentId", otherDepartment.getId().toString()).param("page", "5"))
             .andExpect(status().isOk()).andExpect(model().attribute("currentVolunteerId", volunteer.getId()))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("view=" + volunteer.getId())))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("revealSelf=true#volunteer-name-" + volunteer.getId())))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("data-own-volunteer-link")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("data-volunteer-search")));
         mvc.perform(get(base() + "/volunteers").session(session()).param("view", volunteer.getId().toString())
@@ -67,6 +85,20 @@ class PhoneLoginIntegrationTest {
         mvc.perform(get("/events/" + other.getId() + "/volunteers").session(session()))
             .andExpect(status().isOk()).andExpect(model().attributeDoesNotExist("currentVolunteerId"))
             .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("data-own-volunteer-link"))));
+    }
+    @Test void revealSelfPreservesFiltersAndPageWithoutOpeningDialog() throws Exception {
+        var otherDepartment = service.saveDepartment(event.getId(), null, Map.of("name", "Parking"));
+        mvc.perform(get(base() + "/volunteers").session(session()).param("q", "no-match")
+                .param("departmentId", otherDepartment.getId().toString()).param("page", "5").param("revealSelf", "true"))
+            .andExpect(status().isOk()).andExpect(model().attribute("revealedVolunteerId", volunteer.getId()))
+            .andExpect(model().attribute("q", "no-match"))
+            .andExpect(model().attribute("departmentId", otherDepartment.getId()))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("page=5")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"volunteer-name-" + volunteer.getId() + "\"")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("shown in addition to the current results")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("data-open-on-load=\"true\""))));
+        mvc.perform(get(base() + "/volunteers").session(session()).param("revealSelf", "true"))
+            .andExpect(status().isOk()).andExpect(model().attributeDoesNotExist("revealedVolunteerId"));
     }
     @Test void existingPhoneRecordsAreBackfilledAndEditsUpdateLookup() {
         jdbc.update("update volunteer set normalized_phone = null where id = ?", volunteer.getId());

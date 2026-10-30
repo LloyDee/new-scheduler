@@ -158,7 +158,9 @@ public class WebController {
                       @RequestParam(defaultValue = "false") boolean create,
                       Model model, HttpSession session, HttpServletRequest request) {
         final Long selectedDepartment = request.getParameter("departmentId") == null ? access.department(session, eventId) : departmentId;
-        var details = java.util.stream.Stream.of(edit, view, assignments).filter(Objects::nonNull).toList();
+        Long ownId = access.ownVolunteerId(session, eventId);
+        boolean revealSelf = Boolean.parseBoolean(request.getParameter("revealSelf"));
+        var details = java.util.stream.Stream.of(edit, view, assignments, revealSelf ? ownId : null).filter(Objects::nonNull).toList();
         var result = service.volunteerPage(eventId, selectedDepartment, q, page, details);
         var data = result.snapshot();
         prepare(data, model, session);
@@ -166,7 +168,12 @@ public class WebController {
         String query = q.strip().toLowerCase(Locale.ROOT);
         model.addAttribute("q", q);
         model.addAttribute("departmentId", selectedDepartment);
-        model.addAttribute("filteredVolunteers", result.page().getContent());
+        var visibleVolunteers = new ArrayList<>(result.page().getContent());
+        if (revealSelf && ownId != null && visibleVolunteers.stream().noneMatch(v -> v.getId().equals(ownId))) {
+            visibleVolunteers.add(snapshotVolunteer(data, ownId));
+            model.addAttribute("revealedVolunteerId", ownId);
+        }
+        model.addAttribute("filteredVolunteers", visibleVolunteers);
         Map<String, String> defaults = new HashMap<>();
         if (edit != null) {
             Volunteer v = snapshotVolunteer(data, edit);

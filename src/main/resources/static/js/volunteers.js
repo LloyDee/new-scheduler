@@ -13,10 +13,60 @@ function initializeVolunteers() {
   triggers.forEach(trigger => {
     if (trigger.dataset.dialogBound) return;
     trigger.dataset.dialogBound = 'true';
-    trigger.addEventListener('click', event => {
+    let pending, disposed = false, status;
+    document.addEventListener('scheduler:before-page', () => {
+      disposed = true;
+      pending?.abort();
+    }, { once: true });
+    trigger.addEventListener('click', async event => {
       if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+      if (trigger.dataset.volunteerScroll) {
+        const name = document.getElementById(trigger.dataset.volunteerScroll);
+        if (name) {
+          event.preventDefault();
+          name.focus({ preventScroll: true });
+          name.scrollIntoView({ block: 'center', behavior:
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        }
+        return;
+      }
       const dialog = document.getElementById(trigger.dataset.volunteerDialog);
-      if (openDialog(dialog, trigger)) event.preventDefault();
+      if (dialog) {
+        if (openDialog(dialog, trigger) || dialog.open) event.preventDefault();
+        return;
+      }
+      if (!trigger.hasAttribute('data-own-volunteer-link') || typeof HTMLDialogElement === 'undefined'
+          || typeof HTMLDialogElement.prototype.showModal !== 'function') return;
+      event.preventDefault();
+      if (pending || disposed) return;
+      pending = new AbortController();
+      trigger.setAttribute('aria-busy', 'true');
+      if (!status) {
+        status = document.createElement('span');
+        status.setAttribute('role', 'status');
+        trigger.after(status);
+      }
+      status.textContent = 'Loading details…';
+      try {
+        const response = await fetch(trigger.href, { credentials: 'same-origin', cache: 'no-store',
+          headers: { 'X-Scheduler-Section': 'main' },
+          signal: AbortSignal.any([pending.signal, AbortSignal.timeout(20000)]) });
+        if (disposed) return;
+        if (!response.ok || response.redirected) throw new Error('Details unavailable');
+        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+        if (disposed) return;
+        const loaded = page.getElementById(trigger.dataset.volunteerDialog);
+        if (!loaded?.matches('dialog.volunteer-dialog')) throw new Error('Details unavailable');
+        loaded.removeAttribute('data-open-on-load');
+        document.getElementById('main').append(loaded);
+        if (!openDialog(loaded, trigger)) throw new Error('Details unavailable');
+        status.textContent = '';
+      } catch (error) {
+        if (!disposed) status.textContent = 'Could not load details. Select your name to retry.';
+      } finally {
+        pending = null;
+        trigger.removeAttribute('aria-busy');
+      }
     });
   });
   const selected = document.querySelector('.volunteer-dialog[data-open-on-load="true"]');

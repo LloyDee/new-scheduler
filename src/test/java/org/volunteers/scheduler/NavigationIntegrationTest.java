@@ -53,6 +53,8 @@ class NavigationIntegrationTest {
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andReturn().getResponse().getContentAsString();
             assertThat(html).contains("id=\"main\"", "data-page-title=", "class=\"bottom-nav\"")
+                .contains("data-own-volunteer-link", path.endsWith("/volunteers")
+                    ? "revealSelf=true#volunteer-name-" + owner.getId() : base() + "/volunteers?view=" + owner.getId())
                 .doesNotContain("<html", "<head>", "class=\"app-header\"", "id=\"notification-dialog\"", "<script");
         }
         mvc.perform(get(base() + "/home").session(session)).andExpect(status().isOk())
