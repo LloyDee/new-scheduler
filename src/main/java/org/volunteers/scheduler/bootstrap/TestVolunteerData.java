@@ -39,11 +39,15 @@ public class TestVolunteerData implements CommandLineRunner {
         Set<String> names = new HashSet<>();
         for (int i = 0; i < 100; i++) {
             String name;
-            do { name = first[random.nextInt(first.length)] + " " + last[random.nextInt(last.length)]; }
+            do {
+                name = first[random.nextInt(first.length)] + " " + last[random.nextInt(last.length)];
+            }
             while (!names.add(name));
             int departmentIndex = i % departments.size();
             Volunteer.Role role = i < 5 ? Volunteer.Role.OVERSEER
-                    : i < 15 ? Volunteer.Role.ASSISTANT_OVERSEER : Volunteer.Role.VOLUNTEER;
+                    : i < 15 ? Volunteer.Role.ASSISTANT_OVERSEER
+                    : i >= 25 && i < 30 ? Volunteer.Role.CAPTAIN
+                    : i >= 30 && i < 35 ? Volunteer.Role.KEY_MAN : Volunteer.Role.VOLUNTEER;
             Map<String, String> input = new HashMap<>(Map.of("name", name,
                     "phone", String.format("202-555-%04d", 100 + i),
                     "email", "test.getVolunteer()." + (i + 1) + "@example.com",
@@ -52,9 +56,9 @@ public class TestVolunteerData implements CommandLineRunner {
                             : Volunteer.Privilege.values()[random.nextInt(Volunteer.Privilege.values().length)]).name(),
                     "departmentRole_" + departments.get(departmentIndex).getId(), role.name()));
             // Exactly ten people have two departments; leadership stays in their primary department.
-            if (i >= 15 && i < 25) input.put("departmentRole_" + departments.get((departmentIndex + 1) % 5).getId(), "VOLUNTEER");
+            if (i >= 15 && i < 25)
+                input.put("departmentRole_" + departments.get((departmentIndex + 1) % 5).getId(), "VOLUNTEER");
             service.saveVolunteer(event.getId(), null, input);
         }
-        System.out.println("Created Volunteer Test Event: 100 volunteers, 10 with multiple departments; each department has 1 Overseer and 2 Assistant Overseers.");
     }
 }

@@ -44,6 +44,7 @@ The terminal `bootRun` command above does not automatically compile source chang
 - Bottom navigation: Home, Volunteers, Schedule, Departments, and More.
 - Independent data for every event; event switching under More → Events.
 - Volunteer contacts, congregation, notes, search, and personal assignments.
+- Choose **No Department Yet** when adding or editing a volunteer to skip department roles. These volunteers are available across departments until their first successful shift assignment saves that department with the **Volunteer** role. Clearing department roles preserves existing shift assignments.
 - Department shifts with event-date validation, required headcount, and coverage status.
 - Explicit confirmation for overlapping assignments, including conflicts caused by shift edits. Adjacent shifts are allowed. Duplicate assignments are rejected. Overstaffing is allowed.
 - Date and department filters, printable reports, and CSV downloads for department schedules, volunteer assignments, and staffing coverage.
@@ -51,6 +52,12 @@ The terminal `bootRun` command above does not automatically compile source chang
 - CSRF protection on writes and confirmation dialogs for destructive actions.
 
 ## Data and operation
+
+### Event CSV backups
+
+Open the event, then go to **More → Reports** and choose one of the three **All … information (backup)** options. Download the volunteer, schedule/shift, and department CSV files together. The three files share a backup set identifier in their filenames and include department roles and volunteer assignments. Use **Capture new backup** to include subsequent changes, then download all three files again.
+
+To restore, open the destination event and expand **Restore event from CSV backup** on Reports. Upload all three original CSV files from the same backup set (up to 10 MB each) and confirm replacement. Restoration replaces that event's departments, volunteers, shifts, and assignments; it keeps the event details and other events unchanged. Shift dates must fit the destination event. Validation failures leave existing data intact. Ordinary report CSVs are not backup files; keep backup CSVs unedited for restoration.
 
 The default database is **`./data/scheduler.mv.db`**, relative to the application's working directory. Use the same working directory when restarting to retain data. Stop the app before copying the `data` directory for backup. Event deletion permanently removes all its volunteers, departments, shifts, and assignments. Deleting a department removes its shifts; deleting a volunteer removes their assignments.
 

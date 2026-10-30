@@ -32,14 +32,23 @@ document.querySelectorAll("[data-department-picker]").forEach((picker) => {
   const memberships = [...picker.querySelectorAll("[data-department-membership]")];
   const updateOptions = () => {
     for (const option of departmentSelect.options) {
-      if (!option.value) continue;
+      if (!option.value || option.value === "none") continue;
       option.disabled = memberships.some((row) =>
         row.dataset.departmentId === option.value && !row.hidden);
     }
-    departmentSelect.disabled = memberships.every((row) => !row.hidden);
     departmentSelect.required = !memberships.some((row) => !row.hidden);
   };
   departmentSelect.addEventListener("change", () => {
+    if (departmentSelect.value === "none") {
+      memberships.forEach((row) => {
+        const role = row.querySelector("select");
+        role.value = "";
+        role.required = false;
+        row.hidden = true;
+      });
+      updateOptions();
+      return;
+    }
     const row = memberships.find((item) => item.dataset.departmentId === departmentSelect.value);
     if (!row) return;
     row.hidden = false;

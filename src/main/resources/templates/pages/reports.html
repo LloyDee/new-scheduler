@@ -15,11 +15,11 @@
           </p>
         </div>
         <div class="card-actions no-print">
-          <button class="secondary" type="button" data-print>
+          <button th:unless="${backup}" class="secondary" type="button" data-print>
             Print report</button
           ><a
             class="button"
-            th:href="@{${base + '/reports.csv'}(type=${reportType},departmentId=${departmentId},date=${date})}"
+            th:href="@{${base + '/reports.csv'}(type=${reportType},departmentId=${departmentId},date=${date},snapshot=${backupToken})}"
             >Download CSV</a
           >
         </div>
@@ -47,8 +47,11 @@
             <option value="coverage" th:selected="${reportType == 'coverage'}">
               Staffing coverage
             </option>
+            <option value="volunteers" th:selected="${reportType == 'volunteers'}">All volunteer information (backup)</option>
+            <option value="shifts" th:selected="${reportType == 'shifts'}">All schedule/shift information (backup)</option>
+            <option value="departments" th:selected="${reportType == 'departments'}">All department information (backup)</option>
           </select></label
-        ><label class="grow"
+        ><label class="grow" th:unless="${backup}"
           >Department
           <select name="departmentId">
             <option value="">All departments</option>
@@ -58,11 +61,26 @@
               th:text="${d.name}"
               th:selected="${departmentId == d.id}"
             ></option></select></label
-        ><label>Date <input type="date" name="date" th:value="${date}" /></label
         ><button class="secondary">Apply</button
         ><a th:href="${base + '/reports'}">Clear</a>
       </form>
-      <div class="report-context">
+      <div th:if="${backup}" class="card">
+        <h2 th:text="${reportType == 'volunteers' ? 'All volunteer information' : (reportType == 'shifts' ? 'All schedule/shift information' : 'All department information')}"></h2>
+        <p th:text="${backupCount + ' records in this backup.'}"></p>
+        <p>This backup includes all data for the opened event. Volunteer files include department roles; shift files include volunteer assignments.</p>
+        <p>Download all three files below. They share one snapshot and must be restored together. Keep the original files without editing them in a spreadsheet.</p>
+        <p>Backup set: <code th:text="${backupToken}"></code></p>
+        <div class="card-actions">
+          <a class="button" th:each="category : ${ {'volunteers', 'shifts', 'departments'} }"
+             th:href="@{${base + '/reports.csv'}(type=${category},snapshot=${backupToken})}"
+             th:text="${'Download ' + category + ' CSV'}"></a>
+        </div>
+        <form method="post" th:action="@{${base + '/backups/refresh'}}">
+          <p>To include changes made since this snapshot, capture a new backup and download all three files again.</p>
+          <button class="secondary">Capture new backup</button>
+        </form>
+      </div>
+      <div class="report-context" th:unless="${backup}">
         <h2
           th:text="${reportType == 'volunteer' ? 'Volunteer assignments' : (reportType == 'coverage' ? 'Staffing coverage' : 'Department schedules')}"
         ></h2>
@@ -155,6 +173,18 @@
           </tbody>
         </table>
       </div>
+      <details class="card no-print">
+        <summary>Restore event from CSV backup</summary>
+        <p>Upload the three files from the same backup snapshot. This replaces all departments, volunteers, shifts, and assignments in the opened event. The event details stay unchanged.</p>
+        <p>Upload the original backup CSV files, up to 10 MB each. Ordinary report CSVs cannot be restored.</p>
+        <form method="post" enctype="multipart/form-data" th:action="@{${base + '/backups/restore'}}" class="stack">
+          <label>Department backup CSV <input type="file" name="departments" accept=".csv" required /></label>
+          <label>Volunteer backup CSV <input type="file" name="volunteers" accept=".csv" required /></label>
+          <label>Schedule/shift backup CSV <input type="file" name="shifts" accept=".csv" required /></label>
+          <label><input type="checkbox" name="confirmReplace" value="true" required /> I confirm replacement of all departments, volunteers, shifts, and assignments in this event.</label>
+          <button type="submit">Replace event data from backup</button>
+        </form>
+      </details>
     </section>
   </body>
 </html>

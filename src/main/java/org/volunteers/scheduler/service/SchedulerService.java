@@ -112,7 +112,9 @@ public class SchedulerService {
             catch (IllegalArgumentException ex) { throw invalid("Choose a valid role for " + selected.getName() + "."); }
             departmentRoles.put(selected, role);
         }
-        require(!departmentRoles.isEmpty(), "Choose at least one department and its role.");
+        boolean noDepartment = "none".equals(input.get("departmentChoice"));
+        require(!departmentRoles.isEmpty() || noDepartment, "Choose a department and its role, or No Department Yet.");
+        require(!noDepartment || departmentRoles.isEmpty(), "No Department Yet cannot be combined with department roles.");
         List<Volunteer> existing = volunteers.findByEventIdOrderByNameAscIdAsc(eventId);
         for (var membership : departmentRoles.entrySet()) {
             Volunteer.Role role = membership.getValue();
@@ -176,6 +178,7 @@ public class SchedulerService {
 
     @Transactional
     public void assign(long eventId, long shiftId, long volunteerId, boolean confirmed) {
+        events.lockForVolunteerUpdate(eventId).orElseThrow(SchedulerService::notFound);
         Shift s = shift(eventId, shiftId);
         Volunteer v = volunteer(eventId, volunteerId);
         require(!assignments.existsByShiftIdAndVolunteerId(shiftId, volunteerId), "This volunteer is already assigned to this shift.");
@@ -183,6 +186,7 @@ public class SchedulerService {
                 .filter(a -> a.getVolunteer().getId().equals(volunteerId) && overlaps(a.getShift(), s.getDate(), s.getStartTime(), s.getEndTime()))
                 .map(SchedulerService::conflictDescription).toList();
         if (!conflicts.isEmpty() && !confirmed) throw new OverlapException(String.join("; ", conflicts));
+        if (v.getDepartmentRoles().isEmpty()) v.getDepartmentRoles().put(s.getDepartment(), Volunteer.Role.VOLUNTEER);
         Assignment a = new Assignment(); a.setShift(s); a.setVolunteer(v); assignments.saveAndFlush(a);
     }
 
@@ -272,7 +276,7 @@ public class SchedulerService {
             assignments.stream().filter(a -> overlaps(a.getShift(), shift.getDate(), shift.getStartTime(), shift.getEndTime()))
                     .forEach(a -> busy.add(a.getVolunteer().getId()));
             return volunteers.stream().filter(v -> !busy.contains(v.getId()))
-                    .filter(v -> v.getDepartmentRoles().keySet().stream()
+                    .filter(v -> v.getDepartmentRoles().isEmpty() || v.getDepartmentRoles().keySet().stream()
                             .anyMatch(d -> d.getId().equals(shift.getDepartment().getId()))).toList();
         }
 

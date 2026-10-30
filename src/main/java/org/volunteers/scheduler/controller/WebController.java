@@ -6,6 +6,8 @@ import org.volunteers.scheduler.model.Event;
 import org.volunteers.scheduler.model.Shift;
 import org.volunteers.scheduler.model.Volunteer;
 import org.volunteers.scheduler.service.SchedulerService;
+import org.volunteers.scheduler.service.BackupService;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.*;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
@@ -20,7 +22,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class WebController {
     private final SchedulerService service;
-    public WebController(SchedulerService service) { this.service = service; }
+    private final BackupService backups;
+    public WebController(SchedulerService service, BackupService backups) { this.service = service; this.backups = backups; }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -117,6 +120,7 @@ public class WebController {
                     "congregation", v.getCongregation(), "notes", v.getNotes()));
             defaults.put("privilege", v.getPrivilege() == null ? "" : v.getPrivilege().name());
             v.getDepartmentRoles().forEach((department, role) -> defaults.put("departmentRole_" + department.getId(), role.name()));
+            if (v.getDepartmentRoles().isEmpty()) defaults.put("departmentChoice", "none");
         }
         Map<Long, Volunteer> dialogVolunteers = new LinkedHashMap<>();
         @SuppressWarnings("unchecked")
@@ -223,8 +227,8 @@ public class WebController {
                     "requiredCount", Integer.toString(s.getRequiredCount()), "notes", s.getNotes()));
         }
         draft(model, defaults); model.addAttribute("editId", edit);
-        model.addAttribute("shiftTimes", java.util.stream.IntStream.rangeClosed(0, 69)
-                .mapToObj(i -> java.time.LocalTime.of(6, 0).plusMinutes(i * 10L)).toList());
+        model.addAttribute("shiftTimes", java.util.stream.IntStream.rangeClosed(0, 46)
+                .mapToObj(i -> java.time.LocalTime.of(6, 0).plusMinutes(i * 15L)).toList());
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error") && model.containsAttribute("draft"));
         return "pages/schedule";
     }
@@ -288,6 +292,13 @@ public class WebController {
                    @RequestParam(required = false) Long departmentId, @RequestParam(required = false) LocalDate date,
                    Model model, HttpSession session) {
         var data = prepare(eventId, model, session);
+        model.addAttribute("backup", BackupService.supports(type));
+        if (BackupService.supports(type)) {
+            var backup = backup(eventId, session);
+            model.addAttribute("backupCount", backup.counts().get(type));
+            model.addAttribute("backupToken", backup.token());
+            departmentId = null; date = null;
+        }
         var rows = filter(data, departmentId, date, model);
         model.addAttribute("reportType", reportType(type));
         model.addAttribute("volunteerRows", volunteerReport(data, rows, departmentId != null || date != null));
@@ -296,7 +307,16 @@ public class WebController {
 
     @GetMapping("/events/{eventId}/reports.csv")
     ResponseEntity<byte[]> csv(@PathVariable long eventId, @RequestParam(defaultValue = "department") String type,
-                               @RequestParam(required = false) Long departmentId, @RequestParam(required = false) LocalDate date) {
+                               @RequestParam(required = false) Long departmentId, @RequestParam(required = false) LocalDate date,
+                               @RequestParam(required = false) String snapshot, HttpSession session) {
+        if (BackupService.supports(type)) {
+            var backup = backup(eventId, session);
+            if (snapshot != null && !snapshot.equals(backup.token())) throw new IllegalArgumentException("Backup expired. Reload Reports.");
+            return ResponseEntity.ok().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"event-" + eventId + "-" + backup.token() + "-" + type + ".csv\"")
+                    .body(backup.files().get(type));
+        }
         var data = service.snapshot(eventId); String selected = reportType(type);
         List<SchedulerService.ShiftRow> rows = filtered(data, departmentId, date);
         StringBuilder out = new StringBuilder("\ufeff");
@@ -316,6 +336,53 @@ public class WebController {
         return ResponseEntity.ok().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"event-" + eventId + "-" + selected + ".csv\"")
                 .body(out.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private BackupService.Backup backup(long eventId, HttpSession session) {
+        service.event(eventId);
+        synchronized (session) {
+            Object saved = session.getAttribute("csvBackup");
+            if (saved instanceof BackupService.Backup backup && backup.eventId() == eventId) return backup;
+            var backup = backups.capture(eventId);
+            session.setAttribute("csvBackup", backup);
+            return backup;
+        }
+    }
+
+    @PostMapping("/events/{eventId}/backups/refresh")
+    String refreshBackup(@PathVariable long eventId, HttpSession session, RedirectAttributes flash) {
+        synchronized (session) { session.setAttribute("csvBackup", backups.capture(eventId)); }
+        flash.addFlashAttribute("notice", "New backup captured. Download all three CSV files from this snapshot.");
+        return "redirect:/events/" + eventId + "/reports?type=volunteers";
+    }
+
+    @PostMapping("/events/{eventId}/backups/restore")
+    String restoreBackup(@PathVariable long eventId, @RequestParam(required = false) MultipartFile departments,
+                         @RequestParam(required = false) MultipartFile volunteers, @RequestParam(required = false) MultipartFile shifts,
+                         @RequestParam(defaultValue = "false") boolean confirmReplace,
+                         HttpSession session, RedirectAttributes flash) {
+        service.event(eventId);
+        try {
+            if (!confirmReplace) throw new IllegalArgumentException("Confirm replacement of this event's data before restoring.");
+            if (departments == null || volunteers == null || shifts == null)
+                throw new IllegalArgumentException("Choose all three backup CSV files.");
+            Map<String, byte[]> files = new HashMap<>();
+            for (var entry : Map.of("departments", departments, "volunteers", volunteers, "shifts", shifts).entrySet()) {
+                var file = entry.getValue();
+                if (file.isEmpty() || file.getOriginalFilename() == null || !file.getOriginalFilename().toLowerCase(Locale.ROOT).endsWith(".csv"))
+                    throw new IllegalArgumentException(entry.getKey() + ": Choose a backup CSV file.");
+                files.put(entry.getKey(), file.getBytes());
+            }
+            var counts = backups.restore(eventId, files);
+            synchronized (session) { session.removeAttribute("csvBackup"); }
+            flash.addFlashAttribute("notice", "Backup restored: " + counts.get("departments") + " departments, "
+                    + counts.get("volunteers") + " volunteers, " + counts.get("shifts") + " shifts, " + counts.get("assignments") + " assignments.");
+        } catch (IllegalArgumentException | java.io.IOException ex) {
+            flash.addFlashAttribute("error", "Restore failed. Existing data was kept. " + ex.getMessage());
+        } catch (org.springframework.dao.DataAccessException ex) {
+            flash.addFlashAttribute("error", "Restore failed because the data could not be saved. Existing data was kept.");
+        }
+        return "redirect:/events/" + eventId + "/reports?type=volunteers";
     }
 
     private SchedulerService.Snapshot prepare(long eventId, Model model, HttpSession session) {
@@ -339,7 +406,7 @@ public class WebController {
                 .filter(a -> a.getVolunteer().getId().equals(v.getId())).toList())).filter(v -> !filtered || !v.assignments().isEmpty()).toList();
     }
     private static String reportType(String value) {
-        if (!Set.of("department", "volunteer", "coverage").contains(value)) throw new IllegalArgumentException("Unknown report type.");
+        if (!Set.of("department", "volunteer", "coverage").contains(value) && !BackupService.supports(value)) throw new IllegalArgumentException("Unknown report type.");
         return value;
     }
     static void csvLine(StringBuilder out, Object... values) {
@@ -369,4 +436,17 @@ public class WebController {
         }
     }
     public record VolunteerReport(Volunteer volunteer, List<Assignment> assignments) { }
+}
+
+// Multipart parsing can fail before Spring selects a controller, so this handler is global.
+@ControllerAdvice
+class BackupUploadErrors {
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    String backupTooLarge(HttpServletRequest request, RedirectAttributes flash) {
+        flash.addFlashAttribute("error", "Restore failed. Backup files exceed the upload size limit. Existing data was kept.");
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        if (path.matches("/events/[0-9]+/backups/restore"))
+            return "redirect:" + path.replace("/backups/restore", "/reports?type=volunteers");
+        return "redirect:/";
+    }
 }

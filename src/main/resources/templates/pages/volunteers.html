@@ -1,218 +1,316 @@
 <!doctype html>
 <html
-  lang="en"
-  xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{shared/layout :: page('Volunteers', 'volunteers', ~{::section})}"
+        lang="en"
+        xmlns:th="http://www.thymeleaf.org"
+        th:replace="~{shared/layout :: page('Volunteers', 'volunteers', ~{::section})}"
 >
-  <body>
-    <section class="volunteers-page">
-      <link rel="stylesheet" th:href="@{/css/volunteers.css}" />
-      <script defer th:src="@{/js/volunteers.js}"></script>
-      <div class="page-heading">
+<body>
+<section class="volunteers-page">
+    <link rel="stylesheet" th:href="@{/css/volunteers.css}"/>
+    <script defer th:src="@{/js/volunteers.js}"></script>
+    <div class="page-heading">
         <a class="button" th:href="${base + '/volunteers?create=true#editor'}">+ Add Volunteers</a>
-      </div>
-      <dialog class="volunteer-dialog" th:each="v : ${dialogVolunteers}" th:id="${'volunteer-dialog-' + v.id}"
-              th:attr="aria-labelledby=${'volunteer-title-' + v.id},data-open-on-load=${openVolunteerId == v.id}">
+    </div>
+    <dialog class="volunteer-dialog" th:each="v : ${dialogVolunteers}" th:id="${'volunteer-dialog-' + v.id}"
+            th:attr="aria-labelledby=${'volunteer-title-' + v.id},data-open-on-load=${openVolunteerId == v.id}">
         <div class="volunteer-dialog-content">
-          <h2 class="volunteer-icon-line" th:id="${'volunteer-title-' + v.id}"><svg aria-hidden="true"><use href="#people" /></svg><span th:text="${v.name}"></span></h2>
-          <dl class="volunteer-details">
-            <div><dt class="volunteer-icon-line"><svg aria-hidden="true"><use href="#home" /></svg>Congregation</dt><dd th:text="${#strings.isEmpty(v.congregation) ? 'Not provided' : v.congregation}"></dd></div>
-            <div><dt class="volunteer-icon-line"><svg aria-hidden="true"><use href="#privilege" /></svg>Privilege</dt><dd th:text="${v.privilege != null ? v.privilege.label : 'Not provided'}"></dd></div>
-            <div><dt class="volunteer-icon-line"><svg aria-hidden="true"><use href="#departments" /></svg>Departments and roles</dt><dd>
-              <p th:each="membership : ${v.departmentRoles}" th:text="${membership.key.name + ' ' + membership.value.label}"></p>
-              <span th:if="${v.departmentRoles.isEmpty()}">None assigned</span>
-            </dd></div>
-            <div><dt class="volunteer-icon-line"><svg aria-hidden="true"><use href="#phone" /></svg>Phone</dt><dd>
-              <a th:unless="${#strings.isEmpty(v.phone)}" th:href="${'tel:' + v.phone}" th:text="${v.phone}"></a><span th:if="${#strings.isEmpty(v.phone)}">Not provided</span>
-            </dd></div>
-            <div><dt class="volunteer-icon-line"><svg aria-hidden="true"><use href="#email" /></svg>Email</dt><dd>
-              <a th:unless="${#strings.isEmpty(v.email)}" th:href="${'mailto:' + v.email}" th:text="${v.email}"></a><span th:if="${#strings.isEmpty(v.email)}">Not provided</span>
-            </dd></div>
-            <div th:unless="${#strings.isEmpty(v.notes)}"><dt class="volunteer-icon-line"><svg aria-hidden="true"><use href="#notes" /></svg>Notes</dt><dd class="preserve" th:text="${v.notes}"></dd></div>
-          </dl>
-          <h3 class="volunteer-icon-line"><svg aria-hidden="true"><use href="#calendar" /></svg>Assignments</h3>
-          <p class="muted" th:if="${volunteerAssignments[v.id].isEmpty()}">No assignments yet.</p>
-          <div class="volunteer-assignment" th:each="row : ${volunteerAssignments[v.id]}">
-            <h4 class="volunteer-icon-line"><svg aria-hidden="true"><use href="#calendar" /></svg><span th:text="${row.shift.name}"></span></h4>
-            <p class="volunteer-icon-line"><svg aria-hidden="true"><use href="#departments" /></svg><span><span class="sr-only">Department: </span><span th:text="${row.shift.department.name}"></span></span></p>
-            <p class="volunteer-icon-line"><svg aria-hidden="true"><use href="#calendar" /></svg><span th:text="${#temporals.format(row.shift.date, 'EEE, MMM d, yyyy')}"></span></p>
-            <p class="volunteer-icon-line"><svg aria-hidden="true"><use href="#clock" /></svg><span th:text="${#temporals.format(row.shift.startTime, timePattern) + ' – ' + #temporals.format(row.shift.endTime, timePattern)}"></span></p>
-          </div>
+            <h2 class="volunteer-icon-line" th:id="${'volunteer-title-' + v.id}">
+                <svg aria-hidden="true">
+                    <use href="#people"/>
+                </svg>
+                <span th:text="${v.name}"></span></h2>
+            <dl class="volunteer-details">
+                <div>
+                    <dt class="volunteer-icon-line">
+                        <svg aria-hidden="true">
+                            <use href="#home"/>
+                        </svg>
+                        Congregation
+                    </dt>
+                    <dd th:text="${#strings.isEmpty(v.congregation) ? 'Not provided' : v.congregation}"></dd>
+                </div>
+                <div>
+                    <dt class="volunteer-icon-line">
+                        <svg aria-hidden="true">
+                            <use href="#privilege"/>
+                        </svg>
+                        Privilege
+                    </dt>
+                    <dd th:text="${v.privilege != null ? v.privilege.label : 'Not provided'}"></dd>
+                </div>
+                <div>
+                    <dt class="volunteer-icon-line">
+                        <svg aria-hidden="true">
+                            <use href="#departments"/>
+                        </svg>
+                        Departments and roles
+                    </dt>
+                    <dd>
+                        <p th:each="membership : ${v.departmentRoles}"
+                           th:text="${membership.key.name + ' ' + membership.value.label}"></p>
+                        <span th:if="${v.departmentRoles.isEmpty()}">No Department Yet</span>
+                    </dd>
+                </div>
+                <div>
+                    <dt class="volunteer-icon-line">
+                        <svg aria-hidden="true">
+                            <use href="#phone"/>
+                        </svg>
+                        Phone
+                    </dt>
+                    <dd>
+                        <a th:unless="${#strings.isEmpty(v.phone)}" th:href="${'tel:' + v.phone}"
+                           th:text="${v.phone}"></a><span th:if="${#strings.isEmpty(v.phone)}">Not provided</span>
+                    </dd>
+                </div>
+                <div>
+                    <dt class="volunteer-icon-line">
+                        <svg aria-hidden="true">
+                            <use href="#email"/>
+                        </svg>
+                        Email
+                    </dt>
+                    <dd>
+                        <a th:unless="${#strings.isEmpty(v.email)}" th:href="${'mailto:' + v.email}"
+                           th:text="${v.email}"></a><span th:if="${#strings.isEmpty(v.email)}">Not provided</span>
+                    </dd>
+                </div>
+                <div th:unless="${#strings.isEmpty(v.notes)}">
+                    <dt class="volunteer-icon-line">
+                        <svg aria-hidden="true">
+                            <use href="#notes"/>
+                        </svg>
+                        Notes
+                    </dt>
+                    <dd class="preserve" th:text="${v.notes}"></dd>
+                </div>
+            </dl>
+            <h3 class="volunteer-icon-line">
+                <svg aria-hidden="true">
+                    <use href="#calendar"/>
+                </svg>
+                Assignments
+            </h3>
+            <p class="muted" th:if="${volunteerAssignments[v.id].isEmpty()}">No assignments yet.</p>
+            <div class="volunteer-assignment" th:each="row : ${volunteerAssignments[v.id]}">
+                <h4 class="volunteer-icon-line">
+                    <svg aria-hidden="true">
+                        <use href="#calendar"/>
+                    </svg>
+                    <span th:text="${row.shift.name}"></span></h4>
+                <p class="volunteer-icon-line">
+                    <svg aria-hidden="true">
+                        <use href="#departments"/>
+                    </svg>
+                    <span><span class="sr-only">Department: </span><span th:text="${row.shift.department.name}"></span></span>
+                </p>
+                <p class="volunteer-icon-line">
+                    <svg aria-hidden="true">
+                        <use href="#calendar"/>
+                    </svg>
+                    <span th:text="${#temporals.format(row.shift.date, 'EEE, MMM d, yyyy')}"></span></p>
+                <p class="volunteer-icon-line">
+                    <svg aria-hidden="true">
+                        <use href="#clock"/>
+                    </svg>
+                    <span th:text="${#temporals.format(row.shift.startTime, timePattern) + ' – ' + #temporals.format(row.shift.endTime, timePattern)}"></span>
+                </p>
+            </div>
         </div>
-        <form method="dialog" class="volunteer-dialog-footer"><button autofocus>Close</button></form>
-      </dialog>
-      <div class="workspace" th:classappend="${!showEditor ? 'list-only' : ''}">
+        <form method="dialog" class="volunteer-dialog-footer">
+            <button autofocus>Close</button>
+        </form>
+    </dialog>
+    <div class="workspace" th:classappend="${!showEditor ? 'list-only' : ''}">
         <div class="stack">
-          <form
-            class="filter-bar"
-            method="get"
-            th:action="@{${base + '/volunteers'}}"
-          >
-            <label><span class="sr-only">Filter by department</span>
-              <select name="departmentId" aria-label="Filter by department" data-auto-submit>
-                <option value="">All departments</option>
-                <option th:each="department : ${departments}" th:value="${department.id}"
-                        th:text="${department.name}" th:selected="${departmentId == department.id}"></option>
-              </select>
-            </label>
-          </form>
-          <div class="card" id="volunteer-assignments" th:if="${assignmentVolunteer != null}">
-            <div class="section-heading">
-              <h2 th:text="${assignmentVolunteer.name + '’s assignments'}"></h2>
-              <a th:href="@{${base + '/volunteers'}(departmentId=${departmentId},q=${q})}">Close</a>
+            <form
+                    class="filter-bar"
+                    method="get"
+                    th:action="@{${base + '/volunteers'}}"
+            >
+                <label><span class="sr-only">Filter by department</span>
+                    <select name="departmentId" aria-label="Filter by department" data-auto-submit>
+                        <option value="">All departments</option>
+                        <option th:each="department : ${departments}" th:value="${department.id}"
+                                th:text="${department.name}" th:selected="${departmentId == department.id}"></option>
+                    </select>
+                </label>
+            </form>
+            <div class="card" id="volunteer-assignments" th:if="${assignmentVolunteer != null}">
+                <div class="section-heading">
+                    <h2 th:text="${assignmentVolunteer.name + '’s assignments'}"></h2>
+                    <a th:href="@{${base + '/volunteers'}(departmentId=${departmentId},q=${q})}">Close</a>
+                </div>
+                <p th:if="${personalRows.isEmpty()}" class="muted">No assignments yet.</p>
+                <div th:unless="${personalRows.isEmpty()}"
+                     th:insert="~{shared/fragments :: shifts(${personalRows}, false)}"></div>
             </div>
-            <p th:if="${personalRows.isEmpty()}" class="muted">No assignments yet.</p>
-            <div th:unless="${personalRows.isEmpty()}" th:insert="~{shared/fragments :: shifts(${personalRows}, false)}"></div>
-          </div>
-          <p
-            class="list-count"
-            th:text="${filteredVolunteers.size() + ' volunteers'}"
-          ></p>
-          <div class="card empty" th:if="${filteredVolunteers.isEmpty()}">
-            <h2>No volunteers to show</h2>
-            <p>Add your first volunteer or adjust your department filter.</p>
-          </div>
-          <article class="card volunteer-card" th:each="v : ${filteredVolunteers}">
-            <a class="volunteer-card-main" th:href="@{${base + '/volunteers'}(view=${v.id},departmentId=${departmentId},q=${q})}"
-               th:attr="data-volunteer-dialog=${'volunteer-dialog-' + v.id},aria-controls=${'volunteer-dialog-' + v.id},aria-label=${'View details for ' + v.name}" aria-haspopup="dialog">
-            <div class="person-heading">
+            <p
+                    class="list-count"
+                    th:text="${filteredVolunteers.size() + ' volunteers'}"
+            ></p>
+            <div class="card empty" th:if="${filteredVolunteers.isEmpty()}">
+                <h2>No volunteers to show</h2>
+                <p>Add your first volunteer or adjust your department filter.</p>
+            </div>
+            <article class="card volunteer-card" th:each="v : ${filteredVolunteers}">
+                <a class="volunteer-card-main"
+                   th:href="@{${base + '/volunteers'}(view=${v.id},departmentId=${departmentId},q=${q})}"
+                   th:attr="data-volunteer-dialog=${'volunteer-dialog-' + v.id},aria-controls=${'volunteer-dialog-' + v.id},aria-label=${'View details for ' + v.name}"
+                   aria-haspopup="dialog">
+                    <div class="person-heading">
               <span
-                class="avatar"
-                th:text="${#strings.substring(v.name, 0, 1)}"
+                      class="avatar"
+                      th:text="${#strings.substring(v.name, 0, 1)}"
               ></span>
-              <div>
-                <h2 th:text="${v.name}"></h2>
-                <p class="muted"><span th:text="${v.congregation}"></span></p>
-              </div>
-            </div>
-            <div class="contact-details">
-              <p class="volunteer-icon-line" th:if="${v.privilege != null}"><svg aria-hidden="true"><use href="#privilege" /></svg><span th:text="${v.privilege.label}"></span></p>
-              <p class="volunteer-icon-line" th:each="membership : ${v.departmentRoles}"><svg aria-hidden="true"><use href="#departments" /></svg><span th:text="${membership.key.name + ' ' + membership.value.label}"></span></p>
-            </div>
-            </a>
-            <div class="card-actions">
-              <a th:href="@{${base + '/volunteers'}(assignments=${v.id},departmentId=${departmentId},q=${q})} + '#volunteer-assignments'">Assignments →</a>
-              <a th:href="@{${base + '/volunteers'}(edit=${v.id})} + '#editor'"
-                >Edit</a
-              >
-              <form
-                method="post"
-                th:action="@{${base + '/volunteers/' + v.id + '/delete'}}"
-                data-confirm="Delete this volunteer and all their assignments?"
-              >
-                <button class="text-button danger">Delete</button>
-              </form>
-            </div>
-          </article>
+                        <div>
+                            <h2 th:text="${v.name}"></h2>
+                            <p class="muted"><span th:text="${v.congregation}"></span></p>
+                        </div>
+                    </div>
+                    <div class="contact-details">
+                        <p class="volunteer-icon-line" th:if="${v.departmentRoles.isEmpty()}">No Department Yet</p>
+                        <p class="volunteer-icon-line" th:if="${v.privilege != null}">
+                            <svg aria-hidden="true">
+                                <use href="#privilege"/>
+                            </svg>
+                            <span th:text="${v.privilege.label}"></span></p>
+                        <p class="volunteer-icon-line" th:each="membership : ${v.departmentRoles}">
+                            <svg aria-hidden="true">
+                                <use href="#departments"/>
+                            </svg>
+                            <span th:text="${membership.key.name + ' ' + membership.value.label}"></span></p>
+                    </div>
+                </a>
+                <div class="card-actions">
+                    <a th:href="@{${base + '/volunteers'}(assignments=${v.id},departmentId=${departmentId},q=${q})} + '#volunteer-assignments'">Assignments
+                        →</a>
+                    <a th:href="@{${base + '/volunteers'}(edit=${v.id})} + '#editor'"
+                    >Edit</a
+                    >
+                    <form
+                            method="post"
+                            th:action="@{${base + '/volunteers/' + v.id + '/delete'}}"
+                            data-confirm="Delete this volunteer and all their assignments?"
+                    >
+                        <button class="text-button danger">Delete</button>
+                    </form>
+                </div>
+            </article>
         </div>
         <aside class="card editor" id="editor" th:if="${showEditor}">
-          <p class="eyebrow">VOLUNTEER DETAILS</p>
-          <h2
-            th:text="${editId == null ? 'Add a volunteer' : 'Edit volunteer'}"
-          ></h2>
-          <form
-            class="form-stack"
-            method="post"
-            th:action="@{${base + '/volunteers/save'}}"
-          >
-            <input
-              th:if="${editId != null}"
-              type="hidden"
-              name="id"
-              th:value="${editId}"
-            /><label
-              >Full name
-              <input
-                name="name"
-                required
-                maxlength="160"
-                autocomplete="name"
-                th:value="${draft['name']}" /></label
-            ><label
-              >Phone
-              <input
-                name="phone"
-                required
-                type="tel"
-                data-phone
-                placeholder="(813)516-0335"
-                inputmode="numeric"
-                minlength="13"
-                maxlength="13"
-                pattern="\([0-9]{3}\)[0-9]{3}-[0-9]{4}"
-                title="Enter 10 digits, formatted as (813)516-0335."
-                autocomplete="tel"
-                th:value="${draft['phone']}" /></label
-            ><label
-              >Email <input
-                name="email"
-                required
-                type="email"
-                maxlength="254"
-                autocomplete="email"
-                th:value="${draft['email']}" /></label
-            ><label
-              >Congregation
-              <input
-                name="congregation"
-                required
-                maxlength="160"
-                th:value="${draft['congregation']}" /></label
-            ><label
-              >Privilege
-              <select name="privilege" required>
-                <option value="">Choose a privilege</option>
-                <option th:each="privilege : ${volunteerPrivileges}"
-                        th:value="${privilege.name()}" th:text="${privilege.label}"
-                        th:selected="${draft['privilege'] == privilege.name()}"></option>
-              </select></label>
-            <fieldset class="form-stack" data-department-picker>
-              <legend>Departments and roles</legend>
-              <p class="muted">Select a department, then choose its role. Repeat to add more departments.</p>
-              <p class="muted" th:if="${departments.isEmpty()}">
-                <a th:href="${base + '/departments?create=true#editor'}">Add a department</a> to select departments and roles.
-              </p>
-
-              <div class="form-stack" th:each="department : ${departments}"
-                   data-department-membership th:attr="data-department-id=${department.id}"
-                   th:hidden="${#strings.isEmpty(draft['departmentRole_' + department.id])}">
-                <label>
-                  <span th:text="${department.name + ' role'}"></span>
-                  <select th:name="${'departmentRole_' + department.id}"
-                          th:required="${!#strings.isEmpty(draft['departmentRole_' + department.id])}">
-                  <option value="">Choose a role</option>
-                  <option th:each="role : ${volunteerRoles}"
-                          th:value="${role.name()}" th:text="${role.label}"
-                          th:selected="${draft['departmentRole_' + department.id] == role.name()}"></option>
-                  </select>
-                </label>
-                <button type="button" class="text-button danger" data-remove-department
-                        th:attr="aria-label=${'Remove ' + department.name}">Remove department</button>
-              </div>
-              <label th:unless="${departments.isEmpty()}">Department
-                <select data-department-select required>
-                  <option value="">Choose a department</option>
-                  <option th:each="department : ${departments}"
-                          th:value="${department.id}" th:text="${department.name}"></option>
-                </select>
-              </label>
-            </fieldset>
-            <label>Notes <span class="optional">optional</span
-              ><textarea
-                name="notes"
-                rows="3"
-                maxlength="2000"
-                th:text="${draft['notes']}"
-              ></textarea></label
-            ><button
-              th:text="${editId == null ? 'Add volunteer' : 'Save changes'}"
-            ></button
-            ><a th:href="${base + '/volunteers'}"
-              >Cancel</a
+            <p class="eyebrow">VOLUNTEER DETAILS</p>
+            <h2
+                    th:text="${editId == null ? 'Add a volunteer' : 'Edit volunteer'}"
+            ></h2>
+            <form
+                    class="form-stack"
+                    method="post"
+                    th:action="@{${base + '/volunteers/save'}}"
             >
-          </form>
+                <input
+                        th:if="${editId != null}"
+                        type="hidden"
+                        name="id"
+                        th:value="${editId}"
+                /><label
+            >Full name
+                <input
+                        name="name"
+                        placeholder="Juan Bautista"
+                        required
+                        maxlength="160"
+                        autocomplete="name"
+                        th:value="${draft['name']}"/></label
+            ><label
+            >Phone
+                <input
+                        name="phone"
+                        required
+                        type="tel"
+                        data-phone
+                        placeholder="(813)516-0335"
+                        inputmode="numeric"
+                        minlength="13"
+                        maxlength="13"
+                        pattern="\([0-9]{3}\)[0-9]{3}-[0-9]{4}"
+                        title="Enter 10 digits, formatted as (813)516-0335."
+                        autocomplete="tel"
+                        th:value="${draft['phone']}"/></label
+            ><label>Email <span class="optional">optional</span>
+              <input
+                    name="email"
+                    type="email"
+                    maxlength="254"
+                    autocomplete="email"
+                    th:value="${draft['email']}"/></label
+            ><label
+            >Congregation
+                <input
+                        name="congregation"
+                        required
+                        maxlength="160"
+                        th:value="${draft['congregation']}"/></label
+            ><label
+            >Privilege
+                <select name="privilege" required>
+                    <option value="">Choose a privilege</option>
+                    <option th:each="privilege : ${volunteerPrivileges}"
+                            th:value="${privilege.name()}" th:text="${privilege.label}"
+                            th:selected="${draft['privilege'] == privilege.name()}"></option>
+                </select></label>
+                <fieldset class="form-stack" data-department-picker>
+                    <legend>Departments and roles</legend>
+                    <p class="muted">Select a department and role, or choose No Department Yet. Volunteers without a department join their first assigned shift's department as a Volunteer.</p>
+                    <p class="muted" th:if="${departments.isEmpty()}">
+                        <a th:href="${base + '/departments?create=true#editor'}">Add a department</a> to select
+                        departments and roles, or select No Department Yet below.
+                    </p>
+
+                    <div class="form-stack" th:each="department : ${departments}"
+                         data-department-membership th:attr="data-department-id=${department.id}"
+                         th:hidden="${#strings.isEmpty(draft['departmentRole_' + department.id])}">
+                        <label>
+                            <span th:text="${department.name + ' role'}"></span>
+                            <select th:name="${'departmentRole_' + department.id}"
+                                    th:required="${!#strings.isEmpty(draft['departmentRole_' + department.id])}">
+                                <option value="">Choose a role</option>
+                                <option th:each="role : ${volunteerRoles}"
+                                        th:value="${role.name()}" th:text="${role.label}"
+                                        th:selected="${draft['departmentRole_' + department.id] == role.name()}"></option>
+                            </select>
+                        </label>
+                        <button type="button" class="text-button danger" data-remove-department
+                                th:attr="aria-label=${'Remove ' + department.name}">Remove department
+                        </button>
+                    </div>
+                    <label>Department
+                        <select name="departmentChoice" data-department-select required>
+                            <option value="">Choose a department</option>
+                            <option value="none" th:selected="${draft['departmentChoice'] == 'none'}">No Department Yet</option>
+                            <option th:each="department : ${departments}"
+                                    th:value="${department.id}" th:text="${department.name}"></option>
+                        </select>
+                    </label>
+                </fieldset>
+                <label>Notes <span class="optional">optional</span
+                ><textarea
+                        name="notes"
+                        rows="3"
+                        maxlength="2000"
+                        th:text="${draft['notes']}"
+                ></textarea></label
+                >
+                <button
+                        th:text="${editId == null ? 'Add volunteer' : 'Save changes'}"
+                ></button
+                >
+                <a th:href="${base + '/volunteers'}"
+                >Cancel</a
+                >
+            </form>
         </aside>
-      </div>
-    </section>
-  </body>
+    </div>
+</section>
+</body>
 </html>

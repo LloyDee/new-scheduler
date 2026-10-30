@@ -7,7 +7,7 @@ import java.util.Map;
 @Entity
 public class Volunteer {
     public enum Role {
-        ADMIN("Admin"), OVERSEER("Overseer"), ASSISTANT_OVERSEER("Assistant Overseer"), VOLUNTEER("Volunteer");
+        ADMIN("Admin"), OVERSEER("Overseer"), ASSISTANT_OVERSEER("Assistant Overseer"), CAPTAIN("Captain"),KEY_MAN("Key Man"),VOLUNTEER("Volunteer");
         private final String label;
         Role(String label) { this.label = label; }
         public String getLabel() { return label; }
