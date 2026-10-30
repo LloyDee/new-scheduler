@@ -26,11 +26,14 @@
                     <h2 th:text="${visit.name ?: 'Before sign-in'}"></h2>
                     <span class="logs-device-type" th:text="${visit.deviceCategory ?: 'Unknown device'}"></span>
                 </header>
-                <p class="logs-browser" th:text="${visit.browser ?: 'Unknown browser'}"></p>
                 <dl class="logs-details logs-activity">
-                    <div><dt>Visits</dt><dd th:text="${visit.visitCount}"></dd></div>
+                    <div><dt>Browser</dt><dd th:text="${visit.browser ?: 'Unknown browser'}"></dd></div>
                     <div><dt>Last seen (UTC)</dt><dd><time th:datetime="${visit.lastSeen}" th:text="${#temporals.format(visit.lastSeen, 'MMM d, yyyy HH:mm', 'UTC')}"></time></dd></div>
+                    <div><dt>Visits</dt><dd th:text="${visit.visitCount}"></dd></div>
                 </dl>
+                <details class="logs-disclosure">
+                    <summary><span class="logs-show-details">Show details</span><span class="logs-hide-details">Hide details</span></summary>
+                    <div class="logs-expanded-details">
                 <h3>Approximate location</h3>
                 <dl class="logs-details">
                     <div><dt>City</dt><dd th:text="${visit.city ?: 'Unknown'}"></dd></div>
@@ -44,6 +47,8 @@
                     <div><dt>Language</dt><dd th:text="${visit.language ?: 'Unknown'}"></dd></div>
                     <div><dt>First seen (UTC)</dt><dd><time th:datetime="${visit.firstSeen}" th:text="${#temporals.format(visit.firstSeen, 'MMM d, yyyy HH:mm', 'UTC')}"></time></dd></div>
                 </dl>
+                    </div>
+                </details>
             </article>
         </div>
         <nav aria-label="Logs pages" class="logs-pagination">

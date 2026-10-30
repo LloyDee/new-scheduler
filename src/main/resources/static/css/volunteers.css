@@ -1,3 +1,28 @@
+.volunteers-page .volunteer-list {
+    gap: 8px;
+}
+
+.volunteers-page .filter-bar {
+    margin-bottom: 0;
+}
+
+.volunteers-page [data-search-status] {
+    margin: 0;
+}
+
+/* Keep the live region available without reserving an empty grid row. */
+.volunteers-page [data-search-status]:empty {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.volunteers-page [data-volunteer-results] > .list-count {
+    margin-bottom: -8px;
+}
+
 .volunteer-card {
     position: relative;
     overflow-wrap: anywhere;

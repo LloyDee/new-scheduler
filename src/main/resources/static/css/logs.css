@@ -62,7 +62,7 @@
         gap: 8px;
     }
 
-    .logs-device h2, .logs-browser {
+    .logs-device h2 {
         margin: 0;
     }
 
@@ -76,11 +76,6 @@
         background: var(--green-light);
         color: var(--green);
         font-size: .8rem;
-    }
-
-    .logs-browser {
-        margin-top: 8px;
-        font-weight: 600;
     }
 
     .logs-device h3 {
@@ -109,10 +104,67 @@
     }
 
     .logs-activity {
+        gap: 6px;
+        margin-top: 12px;
+    }
+
+    .logs-activity > div {
+        display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-        margin-top: 14px;
-        padding-bottom: 14px;
-        border-bottom: 1px solid var(--border);
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .logs-activity dd {
+        margin: 0;
+    }
+
+    .logs-disclosure {
+        margin-top: 10px;
+        border-top: 1px solid var(--border);
+    }
+
+    .logs-disclosure summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 44px;
+        color: var(--green);
+        font-weight: 600;
+        cursor: pointer;
+        list-style: none;
+    }
+
+    .logs-disclosure summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .logs-disclosure summary::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        margin-right: 4px;
+        border-right: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+        transform: rotate(45deg);
+        flex-shrink: 0;
+    }
+
+    .logs-disclosure[open] > summary::after {
+        transform: rotate(225deg);
+    }
+
+    .logs-hide-details, .logs-disclosure[open] .logs-show-details {
+        display: none;
+    }
+
+    .logs-disclosure[open] .logs-hide-details {
+        display: inline;
+    }
+
+    .logs-expanded-details {
+        padding-top: 2px;
     }
 
     .logs-password input {
