@@ -8,13 +8,14 @@ public interface Volunteers extends JpaRepository<Volunteer, Long> {
     interface AccessRow {
         Long getVolunteerId();
         String getName();
+        boolean getEventAdministrator();
         Long getEventId();
         Long getDepartmentId();
         Volunteer.Role getRole();
     }
 
     @org.springframework.data.jpa.repository.Query("""
-        select v.id as volunteerId, v.name as name, v.event.id as eventId,
+        select v.id as volunteerId, v.name as name, v.eventAdministrator as eventAdministrator, v.event.id as eventId,
                key(roles).id as departmentId, value(roles) as role
         from Volunteer v left join v.departmentRoles roles
         where v.normalizedPhone = :phone

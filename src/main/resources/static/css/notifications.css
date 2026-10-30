@@ -13,5 +13,4 @@
 .notification-message p { white-space: pre-wrap; margin-bottom: 0; }
 .notification-message time { font-size: .85rem; color: var(--muted); }
 .notification-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
-.notification-lock { margin-top: 12px; }
 @media print { .notification-bell, .notification-dialog { display: none !important; } }

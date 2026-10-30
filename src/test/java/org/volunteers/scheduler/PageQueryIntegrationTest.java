@@ -32,8 +32,8 @@ class PageQueryIntegrationTest {
         var statistics = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
         statistics.clear();
         var snapshot = service.snapshot(event.getId());
-        assertThat(snapshot.volunteers()).hasSize(12);
-        snapshot.volunteers().forEach(v -> assertThat(v.getDepartmentRoles()).hasSize(1));
+        assertThat(snapshot.volunteers()).hasSize(13);
+        snapshot.volunteers().stream().filter(v -> !v.isEventAdministrator()).forEach(v -> assertThat(v.getDepartmentRoles()).hasSize(1));
         assertThat(statistics.getPrepareStatementCount()).as("SQL statements to load one page snapshot").isEqualTo(5);
     }
 }

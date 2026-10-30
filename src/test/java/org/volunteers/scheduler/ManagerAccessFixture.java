@@ -15,10 +15,12 @@ abstract class ManagerAccessFixture {
     @Autowired org.volunteers.scheduler.service.SchedulerService accessScheduler;
     @BeforeEach void managerAccess() {
         when(phoneAccess.saveEvent(any(), any(), any())).thenAnswer(call -> accessScheduler.saveEvent(call.getArgument(0), call.getArgument(1)));
+        org.mockito.Mockito.doAnswer(call -> { accessScheduler.deleteVolunteer(call.getArgument(0), call.getArgument(1)); return null; }).when(phoneAccess).deleteManagedVolunteer(anyLong(), anyLong(), any());
         when(phoneAccess.signedIn(any())).thenReturn(true);
         when(phoneAccess.canManage(any(), any())).thenReturn(true);
-        when(phoneAccess.manageableEventIds(any())).thenAnswer(call -> accessScheduler.events().stream()
-                .map(org.volunteers.scheduler.model.Event::getId).collect(java.util.stream.Collectors.toSet()));
+        when(phoneAccess.canManageLogsAndNotifications(any(), any())).thenReturn(true);
+        when(phoneAccess.canAdminister(any(), any())).thenReturn(true);
+        when(phoneAccess.saveManagedVolunteer(anyLong(), any(), any(), any())).thenAnswer(call -> accessScheduler.saveVolunteer(call.getArgument(0), call.getArgument(1), call.getArgument(2)));
         when(phoneAccess.department(any(), anyLong())).thenReturn(null);
         when(phoneAccess.ids(any())).thenAnswer(call -> accessVolunteers.findAll().stream()
                 .map(v -> v.getId()).collect(java.util.stream.Collectors.toSet()));

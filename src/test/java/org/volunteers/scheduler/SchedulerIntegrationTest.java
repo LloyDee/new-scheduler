@@ -161,8 +161,8 @@ class SchedulerIntegrationTest extends ManagerAccessFixture {
         service.assign(event.getId(), busy.getId(), volunteer.getId(), false);
         Shift adjacent = service.saveShift(event.getId(), null, shiftInput("10:30", "11:00"));
         var data = service.snapshot(event.getId());
-        assertThat(data.availableVolunteers(shift)).extracting(v -> v.getId()).containsExactly(available.getId());
-        assertThat(data.availableVolunteers(adjacent)).extracting(v -> v.getId())
+        assertThat(data.availableVolunteers(shift).stream().filter(v -> !v.isEventAdministrator()).toList()).extracting(v -> v.getId()).containsExactly(available.getId());
+        assertThat(data.availableVolunteers(adjacent).stream().filter(v -> !v.isEventAdministrator()).toList()).extracting(v -> v.getId())
                 .containsExactlyInAnyOrder(volunteer.getId(), available.getId()).doesNotContain(other.getId());
         String html = mvc.perform(get("/events/" + event.getId() + "/schedule"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
@@ -170,7 +170,7 @@ class SchedulerIntegrationTest extends ManagerAccessFixture {
         card = card.substring(0, card.indexOf("</article>"));
         assertThat(card).contains("Available Person").doesNotContain("Alex Rivera", "Parking Person");
         service.assign(event.getId(), shift.getId(), available.getId(), false);
-        assertThat(service.snapshot(event.getId()).availableVolunteers(shift)).isEmpty();
+        assertThat(service.snapshot(event.getId()).availableVolunteers(shift).stream().filter(v -> !v.isEventAdministrator()).toList()).isEmpty();
         html = mvc.perform(get("/events/" + event.getId() + "/schedule"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         card = html.substring(html.indexOf("id=\"shift-" + shift.getId() + "\""));
@@ -375,9 +375,9 @@ class SchedulerIntegrationTest extends ManagerAccessFixture {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Attendants Overseer")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Parking Volunteer")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"ELDER\" selected")));
-        service.saveVolunteer(event.getId(), volunteer.getId(), volunteerInput("name", "Alex", "privilege", "PUBLISHER", secondKey, "ADMIN"));
+        service.saveVolunteer(event.getId(), volunteer.getId(), volunteerInput("name", "Alex", "privilege", "PUBLISHER", secondKey, "VOLUNTEER", "eventAdministrator", "true"));
         entityManager.flush(); entityManager.clear();
-        assertThat(service.volunteer(event.getId(), volunteer.getId()).getDepartmentRoles().values()).containsExactly(Volunteer.Role.ADMIN);
+        assertThat(service.volunteer(event.getId(), volunteer.getId()).getDepartmentRoles().values()).containsExactly(Volunteer.Role.VOLUNTEER);
         service.deleteDepartment(event.getId(), second.getId());
         entityManager.flush(); entityManager.clear();
         assertThat(service.volunteer(event.getId(), volunteer.getId()).getDepartmentRoles()).isEmpty();
@@ -464,7 +464,7 @@ class SchedulerIntegrationTest extends ManagerAccessFixture {
         seed.run();
         Event seeded = service.events().stream().filter(e -> "Volunteer Test Event".equals(e.getName())).findFirst().orElseThrow();
         var data = service.snapshot(seeded.getId());
-        assertThat(data.volunteers()).hasSize(100);
+        assertThat(data.volunteers()).hasSize(101);
         assertThat(data.volunteers().stream().filter(v -> v.getDepartmentRoles().size() > 1).count()).isEqualTo(10);
         for (Department d : data.departments()) {
             assertThat(data.volunteers().stream().filter(v -> v.getDepartmentRoles().get(d) == Volunteer.Role.OVERSEER).count()).isEqualTo(1);
@@ -472,7 +472,7 @@ class SchedulerIntegrationTest extends ManagerAccessFixture {
             assertThat(data.volunteers().stream().filter(v -> v.getDepartmentRoles().get(d) == Volunteer.Role.CAPTAIN).count()).isEqualTo(1);
             assertThat(data.volunteers().stream().filter(v -> v.getDepartmentRoles().get(d) == Volunteer.Role.KEY_MAN).count()).isEqualTo(1);
         }
-        assertThat(service.snapshot(event.getId()).volunteers()).hasSize(1);
+        assertThat(service.snapshot(event.getId()).volunteers()).hasSize(2);
     }
 
     @Test void volunteerCardsKeepContactsInDialogAndShowOnlyPersonalAssignments() throws Exception {

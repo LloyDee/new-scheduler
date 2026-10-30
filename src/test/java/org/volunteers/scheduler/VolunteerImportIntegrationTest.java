@@ -20,7 +20,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:import-tests;DB_CLOSE_DELAY=-1", "spring.jpa.hibernate.ddl-auto=create-drop"})
+@SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:import-tests;DB_CLOSE_DELAY=-1", "spring.jpa.hibernate.ddl-auto=create-drop", "scheduler.app-owner-phone=9995550000"})
 @AutoConfigureMockMvc
 class VolunteerImportIntegrationTest extends ManagerAccessFixture {
     @Autowired VolunteerImportService imports;
@@ -37,7 +37,7 @@ class VolunteerImportIntegrationTest extends ManagerAccessFixture {
         scheduler.saveDepartment(eventId, null, Map.of("name", "Attendants"));
     }
     MockMultipartFile csv(String text) { return new MockMultipartFile("file", "volunteers.csv", "text/csv", text.getBytes(StandardCharsets.UTF_8)); }
-    List<Volunteer> saved() { return volunteers.findByEventIdOrderByNameAscIdAsc(eventId); }
+    List<Volunteer> saved() { return volunteers.findByEventIdOrderByNameAscIdAsc(eventId).stream().filter(v -> !v.isEventAdministrator()).toList(); }
 
     @Test void csvSupportsBomQuotedNotesAndNoDepartment() {
         assertThat(imports.importFile(eventId, csv("\uFEFF" + HEADER + ROW.replace("Welcome,Volunteer", "\"Welcome, team\",")))).isEqualTo(1);

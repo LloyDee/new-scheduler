@@ -10,6 +10,7 @@ import org.volunteers.scheduler.service.PhoneAccess;
 
 /** Populate the lookup column for records created before it existed. */
 @Component
+@org.springframework.core.annotation.Order(0)
 public class PhoneLookupBackfill implements ApplicationRunner {
     private final JdbcTemplate jdbc;
 

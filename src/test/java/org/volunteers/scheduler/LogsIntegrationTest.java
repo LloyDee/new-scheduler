@@ -27,14 +27,14 @@ class LogsIntegrationTest extends ManagerAccessFixture {
     @Autowired DeviceVisitService service;
     @BeforeEach void clear() { visits.deleteAll(); }
 
-    @Test void managersOpenLogsWithoutPasswordAndOthersReceive403() throws Exception {
+    @Test void authorizedRolesOpenLogsWithoutPasswordAndOthersReceive403() throws Exception {
         service.record(UUID.randomUUID().toString(), Map.of("city", "PrivateCity"));
         MockHttpSession session = new MockHttpSession();
         mvc.perform(get("/logs").session(session)).andExpect(status().isOk())
             .andExpect(header().string("Cache-Control", "no-store"))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("PrivateCity")))
             .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Unlock Logs"))));
-        org.mockito.Mockito.when(phoneAccess.canManage(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(false);
+        org.mockito.Mockito.when(phoneAccess.canManageLogsAndNotifications(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(false);
         mvc.perform(get("/logs").session(session)).andExpect(status().isForbidden());
     }
     @Test void recordingUsesPersistentCookieAndPreservesLocation() throws Exception {

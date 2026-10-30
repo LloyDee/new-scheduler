@@ -63,6 +63,12 @@
                             th:value="${privilege.name()}" th:text="${privilege.label}"
                             th:selected="${draft['privilege'] == privilege.name()}"></option>
                 </select></label>
+                <label th:if="${canAdminister and !signup}">Event administrator
+                    <select name="eventAdministrator">
+                        <option value="false" th:selected="${draft['eventAdministrator'] != 'true'}">No</option>
+                        <option value="true" th:selected="${draft['eventAdministrator'] == 'true'}">Yes</option>
+                    </select>
+                </label>
                 <fieldset th:if="${canManage and !signup}" class="form-stack" data-department-picker>
                     <legend>Departments and roles</legend>
                     <p class="muted" th:if="${editId == null}">Select a department and role, or choose No Department Yet. Volunteers without a department join their first assigned shift's department as a Volunteer.</p>
@@ -92,7 +98,7 @@
                     <label>Department
                         <select name="departmentChoice" data-department-select required>
                             <option value="">Choose a department</option>
-                            <option th:if="${editId == null}" value="none" th:selected="${draft['departmentChoice'] == 'none'}">No Department Yet</option>
+                            <option th:if="${editId == null or draft['eventAdministrator'] == 'true'}" value="none" th:selected="${draft['departmentChoice'] == 'none'}">No Department Yet</option>
                             <option th:each="department : ${departments}"
                                     th:value="${department.id}" th:text="${department.name}"></option>
                         </select>

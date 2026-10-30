@@ -41,7 +41,7 @@ class VolunteerRoleConstraintIntegrationTest extends ManagerAccessFixture {
                 "startDate", "2026-11-01", "endDate", "2026-11-02", "venue", "Test Hall")).getId();
         Department department = scheduler.saveDepartment(eventId, null, Map.of("name", "Cleaning"));
         imports.importFile(eventId, csv(HEADER + "Existing Volunteer,2025550000,existing@example.com,North,Publisher,,Volunteer\r\n"));
-        Long existingId = volunteers.findByEventIdOrderByNameAscIdAsc(eventId).getFirst().getId();
+        Long existingId = volunteers.findByEventIdOrderByNameAscIdAsc(eventId).stream().filter(v -> !v.isEventAdministrator()).toList().getFirst().getId();
         jdbc.execute("ALTER TABLE volunteer_department_roles ADD CONSTRAINT volunteer_department_roles_department_role_check "
                 + "CHECK (department_role IN ('ADMIN','OVERSEER','ASSISTANT_OVERSEER','CAPTAIN','VOLUNTEER'))");
         MockHttpSession session = new MockHttpSession(); session.setAttribute("activeEvent", eventId);
@@ -52,7 +52,7 @@ class VolunteerRoleConstraintIntegrationTest extends ManagerAccessFixture {
         mvc.perform(multipart("/settings/data/volunteers/import").file(csv(file)).session(session).with(csrf()))
                 .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/settings#data"))
                 .andExpect(flash().attribute("importError", ERROR));
-        assertThat(volunteers.findByEventIdOrderByNameAscIdAsc(eventId)).extracting(Volunteer::getId).containsExactly(existingId);
+        assertThat(volunteers.findByEventIdOrderByNameAscIdAsc(eventId).stream().filter(v -> !v.isEventAdministrator()).toList()).extracting(Volunteer::getId).containsExactly(existingId);
         mvc.perform(get("/settings").session(session))
                 .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString(ERROR)));
 
@@ -65,11 +65,12 @@ class VolunteerRoleConstraintIntegrationTest extends ManagerAccessFixture {
         StringBuilder roles = new StringBuilder(HEADER);
         int number = 10;
         for (Volunteer.Role role : Volunteer.Role.values()) {
+            if (role == Volunteer.Role.ADMIN) continue;
             roles.append("Role ").append(role.name()).append(",20255500").append(number++)
                     .append(",test@example.com,North,Elder,,").append(role.getLabel()).append("\r\n");
         }
-        assertThat(imports.importFile(eventId, csv(roles.toString()))).isEqualTo(Volunteer.Role.values().length);
-        assertThat(volunteers.findByEventIdOrderByNameAscIdAsc(eventId)).hasSize(7)
+        assertThat(imports.importFile(eventId, csv(roles.toString()))).isEqualTo(Volunteer.Role.values().length - 1);
+        assertThat(volunteers.findByEventIdOrderByNameAscIdAsc(eventId).stream().filter(v -> !v.isEventAdministrator()).toList()).hasSize(6)
                 .anySatisfy(v -> assertThat(v.getId()).isEqualTo(existingId));
         assertThatThrownBy(() -> jdbc.update("UPDATE volunteer_department_roles SET department_role = 'UNKNOWN' WHERE volunteer_id = ? AND department_id = ?", existingId, department.getId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -90,7 +91,7 @@ class VolunteerRoleConstraintIntegrationTest extends ManagerAccessFixture {
             sample = generated.toString();
         }
         assertThat(imports.importFile(sampleEvent, csv(sample))).isEqualTo(21);
-        assertThat(volunteers.findByEventIdOrderByNameAscIdAsc(sampleEvent)).hasSize(21)
+        assertThat(volunteers.findByEventIdOrderByNameAscIdAsc(sampleEvent)).hasSize(22)
                 .anySatisfy(v -> assertThat(v.getDepartmentRoles().values()).contains(Volunteer.Role.KEY_MAN))
                 .anySatisfy(v -> assertThat(v.getDepartmentRoles().values()).contains(Volunteer.Role.CAPTAIN));
     }

@@ -96,8 +96,8 @@
       </div>
       <form method="dialog" class="notification-footer"><button autofocus>Close</button></form>
     </dialog>
-    <main id="main" class="container" tabindex="-1" th:attr="data-page-title=${title + ' · App'}">
-      <form th:if="${session.loginPhone != null}" method="post" th:action="@{/logout}" class="card-actions"><span th:if="${currentUserFirstName != null}" th:text="${'Hi ' + currentUserFirstName + ' -'}"></span><button class="text-button">Logout</button></form>
+    <main id="main" class="container" th:classappend="${session.loginPhone != null ? 'signed-in-container' : ''}" tabindex="-1" th:attr="data-page-title=${title + ' · App'}">
+      <form th:if="${session.loginPhone != null}" method="post" th:action="@{/logout}" class="card-actions user-greeting"><span th:if="${currentUserFirstName != null}" th:text="${'Hi ' + currentUserFirstName + ' -'}"></span><button class="text-button">Logout</button><span th:if="${isAppOwner}" class="badge">App Owner</span></form>
       <div
         th:if="${notice != null}"
         class="alert success"
@@ -149,7 +149,7 @@
         ><svg aria-hidden="true"><use href="#more" /></svg><span>More</span></button
       >
       <div id="more-menu" class="more-menu" hidden>
-        <a th:href="@{/logs}"><svg aria-hidden="true"><use href="#reports" /></svg><span>Logs</span></a>
+        <a th:if="${canManageLogsAndNotifications}" th:href="@{/logs}"><svg aria-hidden="true"><use href="#reports" /></svg><span>Logs</span></a>
         <a th:href="@{/settings}"><svg aria-hidden="true"><use href="#settings" /></svg><span>Settings</span></a>
         <a th:href="@{/events}"><svg aria-hidden="true"><use href="#calendar" /></svg><span>Events</span></a>
         <a th:href="${event != null ? '/events/' + event.id + '/reports' : '/events'}"><svg aria-hidden="true"><use href="#reports" /></svg><span>Reports</span></a>

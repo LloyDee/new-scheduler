@@ -17,7 +17,7 @@ public class LoginController {
     @GetMapping("/login") String login() { return "pages/login"; }
     @PostMapping("/login") String login(@RequestParam String phone, HttpServletRequest request, RedirectAttributes flash) {
         String normalized = PhoneAccess.normalize(phone);
-        if (normalized.isEmpty() || access.matching(normalized).isEmpty()) {
+        if (normalized.isEmpty() || (!access.isOwnerPhone(normalized) && access.matching(normalized).isEmpty())) {
             flash.addFlashAttribute("error", normalized.isEmpty() ? "Enter a valid 10-digit phone number." : "Phone number not found. Please sign up.");
             flash.addFlashAttribute("phone", phone); return "redirect:/login";
         }

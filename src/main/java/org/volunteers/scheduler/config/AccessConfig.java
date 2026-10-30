@@ -27,7 +27,12 @@ public class AccessConfig implements WebMvcConfigurer {
                     try { manager = access.canManage(session, id == null || id.isBlank() ? null : Long.valueOf(id)); }
                     catch (NumberFormatException ex) { response.sendError(400); return false; }
                 }
-                if (path.equals("/logs") && !manager) { response.sendError(403); return false; }
+                boolean restrictedTools = path.equals("/logs") || path.equals("/settings/notifications")
+                    || path.startsWith("/settings/notifications/");
+                if (restrictedTools && !access.canManageLogsAndNotifications(session, eventId)) {
+                    response.sendError(403); return false;
+                }
+                if ((path.matches("/events/\\d+/delete") || path.matches("/events/\\d+/backups/restore")) && !access.canAdminister(session, eventId)) { response.sendError(403); return false; }
                 boolean safe = Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod());
                 boolean personal = path.equals("/logout") || path.equals("/settings") || path.equals("/api/notifications/read")
                     || path.equals("/api/device-visits") || path.matches("/events/\\d+/select");

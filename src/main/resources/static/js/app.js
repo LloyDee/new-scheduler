@@ -32,14 +32,16 @@ document.querySelectorAll("[data-department-picker]").forEach((picker) => {
   const departmentSelect = picker.querySelector("[data-department-select]");
   if (!departmentSelect) return;
   const memberships = [...picker.querySelectorAll("[data-department-membership]")];
+  const administrator = picker.closest("form").querySelector("[name=eventAdministrator]");
   const updateOptions = () => {
     for (const option of departmentSelect.options) {
       if (!option.value || option.value === "none") continue;
       option.disabled = memberships.some((row) =>
         row.dataset.departmentId === option.value && !row.hidden);
     }
-    departmentSelect.required = !memberships.some((row) => !row.hidden);
+    departmentSelect.required = administrator?.value !== "true" && !memberships.some((row) => !row.hidden);
   };
+  administrator?.addEventListener("change", updateOptions);
   departmentSelect.addEventListener("change", () => {
     if (departmentSelect.value === "none") {
       memberships.forEach((row) => {

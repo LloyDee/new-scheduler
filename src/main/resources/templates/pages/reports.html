@@ -171,7 +171,7 @@
           </tbody>
         </table>
       </div>
-      <details th:if="${canManage}" class="card no-print">
+      <details th:if="${canAdminister}" class="card no-print">
         <summary>Restore event from CSV backup</summary>
         <p>Upload the three files from the same backup snapshot. This replaces all departments, volunteers, shifts, and assignments in the opened event. The event details stay unchanged.</p>
         <p>Upload the original backup CSV files, up to 10 MB each. Ordinary report CSVs cannot be restored.</p>

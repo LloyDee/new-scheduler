@@ -104,7 +104,7 @@ public class VolunteerImportService {
         throw error(row, "Privilege", "Choose Elder, Ministerial Servant, or Publisher.");
     }
     private static String role(String value, int row, String column) {
-        for (Volunteer.Role r : Volunteer.Role.values()) if (key(r.name()).equals(key(value)) || key(r.getLabel()).equals(key(value))) return r.name();
+        for (Volunteer.Role r : Volunteer.Role.values()) if (r != Volunteer.Role.ADMIN && (key(r.name()).equals(key(value)) || key(r.getLabel()).equals(key(value)))) return r.name();
         throw error(row, column, "Unknown role: " + value);
     }
     private static String key(String value) { return value == null ? "" : value.strip().toLowerCase(Locale.ROOT); }

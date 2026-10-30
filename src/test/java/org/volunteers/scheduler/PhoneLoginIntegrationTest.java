@@ -77,9 +77,10 @@ class PhoneLoginIntegrationTest {
         Event other = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", "2027-06-11"));
         assertThatThrownBy(() -> access.signup(other.getId(), profile("+1 (210) 555-0100")))
             .hasMessageContaining("already exists");
-        var input = profile("2105550101"); input.put("departmentRole_" + department.getId(), "ADMIN");
+        var input = profile("2105550101"); input.put("departmentRole_" + department.getId(), "ADMIN"); input.put("eventAdministrator", "true");
         Volunteer created = access.signup(event.getId(), input);
         assertThat(created.getDepartmentRoles()).isEmpty();
+        assertThat(created.isEventAdministrator()).isFalse();
     }
     @Test void volunteerCanEditOnlySelfAndCannotPromoteSelf() throws Exception {
         mvc.perform(post(base() + "/volunteers/save").session(session()).with(csrf())
@@ -102,9 +103,10 @@ class PhoneLoginIntegrationTest {
             mvc.perform(post(path).session(session()).with(csrf())).andExpect(status().isForbidden());
         mvc.perform(get(base() + "/schedule").session(session()).param("create", "true")).andExpect(status().isForbidden());
     }
-    @Test void allFourManagementRolesAreAllowedOnlyInTheirEvent() {
+    @Test void departmentManagementRolesAreAllowedOnlyInTheirEvent() {
         Event other = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", "2027-06-11"));
         for (Volunteer.Role role : Volunteer.Role.values()) {
+            if (role == Volunteer.Role.ADMIN) continue; // Admin is now an event permission.
             var input = profile("2105550100"); input.put("departmentRole_" + department.getId(), role.name());
             service.saveVolunteer(event.getId(), volunteer.getId(), input);
             assertThat(access.canManage(session(), event.getId())).isEqualTo(Set.of(Volunteer.Role.ADMIN,

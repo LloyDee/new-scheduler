@@ -35,7 +35,7 @@ class NavigationIntegrationTest {
     @BeforeEach void setup() {
         event = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", "2027-06-04"));
         department = service.saveDepartment(event.getId(), null, Map.of("name", "Attendants"));
-        owner = service.saveVolunteer(event.getId(), null, profile("Alex Actual", "2105550000", "ADMIN"));
+        owner = service.saveVolunteer(event.getId(), null, profile("Alex Actual", "2105550000", "OVERSEER"));
         session = new MockHttpSession();
         session.setAttribute(PhoneAccess.SESSION, "2105550000");
         session.setAttribute("activeEvent", event.getId());
@@ -67,7 +67,7 @@ class NavigationIntegrationTest {
         em.flush(); em.clear();
         var first = service.volunteerPage(event.getId(), null, "", 0, List.of());
         var second = service.volunteerPage(event.getId(), null, "", 1, List.of());
-        assertThat(first.page().getTotalElements()).isEqualTo(52);
+        assertThat(first.page().getTotalElements()).isEqualTo(53);
         assertThat(first.page().getContent()).hasSize(25);
         assertThat(second.page().getContent()).hasSize(25);
         assertThat(first.page().getContent()).extracting(Volunteer::getId)
@@ -75,7 +75,7 @@ class NavigationIntegrationTest {
         assertThat(service.volunteerPage(event.getId(), department.getId(), "Volunteer 051", 0, List.of()).page().getContent())
             .extracting(Volunteer::getName).containsExactly("Volunteer 051");
         var last = service.volunteerPage(event.getId(), null, "", 2, List.of());
-        assertThat(last.page().getContent()).hasSize(2);
+        assertThat(last.page().getContent()).hasSize(3);
         Long offPage = last.page().getContent().getLast().getId();
         mvc.perform(get(base() + "/volunteers").session(session).param("view", offPage.toString()))
             .andExpect(status().isOk()).andExpect(model().attribute("openVolunteerId", offPage));

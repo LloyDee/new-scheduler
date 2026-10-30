@@ -30,7 +30,7 @@ class RequestQueryIntegrationTest {
         var event = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", "2027-06-04"));
         var department = service.saveDepartment(event.getId(), null, Map.of("name", "Attendants"));
         var volunteer = service.saveVolunteer(event.getId(), null, Map.of("name", "Alex", "phone", "2105550100",
-            "congregation", "Central", "privilege", "PUBLISHER", "departmentRole_" + department.getId(), "ADMIN"));
+            "congregation", "Central", "privilege", "PUBLISHER", "departmentRole_" + department.getId(), "OVERSEER"));
         var otherDepartment = service.saveDepartment(event.getId(), null, Map.of("name", "Parking"));
         for (int i = 1; i <= 12; i++) {
             service.saveVolunteer(event.getId(), null, Map.of("name", "Volunteer " + i,

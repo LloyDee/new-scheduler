@@ -16,7 +16,7 @@
         </div>
       </div>
       <div class="menu-grid">
-        <a class="card menu-card" th:href="@{/logs}"><span class="menu-number">04</span><h2>Logs <span>&#8599;</span></h2><p>View password-protected device and visit summaries.</p></a>
+        <a th:if="${canManageLogsAndNotifications}" class="card menu-card" th:href="@{/logs}"><span class="menu-number">04</span><h2>Logs <span>&#8599;</span></h2><p>View password-protected device and visit summaries.</p></a>
         <a class="card menu-card" th:href="@{/settings}"
           ><span class="menu-number">01</span>
           <h2>Settings <span>↗</span></h2>

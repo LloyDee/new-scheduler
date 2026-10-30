@@ -11,7 +11,6 @@
         <div>
             <p class="eyebrow">MAKE YOURSELF AT HOME</p>
             <h1>Settings</h1>
-            <p class="muted">Small preferences for a smoother day.</p>
         </div>
     </div>
     <div class="settings-grid">
@@ -84,22 +83,14 @@
                 <button>Save preferences</button>
             </form>
         </div>
-        <div class="card settings-card" id="notification" th:if="${canManage}">
+        <div class="card settings-card" id="notification" th:if="${canManageLogsAndNotifications}">
             <h2>Notification</h2>
             <p th:if="${notificationError}" th:text="${notificationError}" role="alert"></p>
-            <form th:unless="${session.notificationUnlocked == true}" class="form-stack" method="post" th:action="@{/settings/notifications/unlock}">
-                <p class="muted">Enter the Logs password to send notifications to all devices.</p>
-                <label>Password<input type="password" name="password" required autocomplete="current-password" /></label>
-                <button>Unlock Notification</button>
+            <form class="form-stack" method="post" th:action="@{/settings/notifications}">
+                <label>Message<textarea name="message" rows="5" maxlength="5000" required th:text="${notificationDraft}"></textarea></label>
+                <p class="muted">Send a plain-text message to everyone using the app. Up to 5,000 characters.</p>
+                <button>Send notification</button>
             </form>
-            <th:block th:if="${session.notificationUnlocked == true}">
-                <form class="form-stack" method="post" th:action="@{/settings/notifications}">
-                    <label>Message<textarea name="message" rows="5" maxlength="5000" required th:text="${notificationDraft}"></textarea></label>
-                    <p class="muted">Send a plain-text message to everyone using the app. Up to 5,000 characters.</p>
-                    <button>Send notification</button>
-                </form>
-                <form class="notification-lock" method="post" th:action="@{/settings/notifications/lock}"><button class="secondary">Lock Notification</button></form>
-            </th:block>
         </div>
         <div class="card settings-card app-card">
             <h2>App</h2>

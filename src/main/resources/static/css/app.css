@@ -1582,3 +1582,7 @@ input, select, textarea { background: var(--surface-tint); border-color: var(--b
 }
 
 .current-user-name { background: #ffeb99; color: #172e29; border-radius: .3rem; padding: .12rem .35rem; font-weight: 750; box-decoration-break: clone; }
+
+/* Keep the signed-in greeting close to the application header. */
+.container.signed-in-container { padding-top: 8px; }
+.user-greeting { margin-top: 0; }

@@ -88,6 +88,13 @@ public class WebController {
                   Model model, HttpSession session) {
         var eventPage = service.eventsPage(page);
         var events = eventPage.getContent();
+        Set<Long> manageable = new HashSet<>(), administrable = new HashSet<>();
+        for (Event listed : events) {
+            if (access.canManage(session, listed.getId())) manageable.add(listed.getId());
+            if (access.canAdminister(session, listed.getId())) administrable.add(listed.getId());
+        }
+        model.addAttribute("manageableEventIds", manageable);
+        model.addAttribute("administrableEventIds", administrable);
         model.addAttribute("listPage", eventPage);
         model.addAttribute("events", events); model.addAttribute("types", Event.Type.values());
         Event active = events.stream().filter(e -> e.getId().equals(session.getAttribute("activeEvent"))).findFirst().orElse(null);
@@ -165,6 +172,8 @@ public class WebController {
             Volunteer v = snapshotVolunteer(data, edit);
             defaults.putAll(Map.of("name", v.getName(), "phone", v.getPhone(), "email", v.getEmail(),
                     "congregation", v.getCongregation(), "notes", v.getNotes()));
+            if (v.isEventAdministrator() && v.getDepartmentRoles().isEmpty()) defaults.put("departmentChoice", "none");
+            defaults.put("eventAdministrator", Boolean.toString(v.isEventAdministrator()));
             defaults.put("privilege", v.getPrivilege() == null ? "" : v.getPrivilege().name());
             v.getDepartmentRoles().forEach((department, role) -> defaults.put("departmentRole_" + department.getId(), role.name()));
         }
@@ -187,7 +196,7 @@ public class WebController {
         }
         draft(model, defaults); model.addAttribute("editId", edit);
         model.addAttribute("showEditor", create || edit != null || model.containsAttribute("error") && model.containsAttribute("draft"));
-        model.addAttribute("volunteerRoles", Volunteer.Role.values());
+        model.addAttribute("volunteerRoles", java.util.Arrays.stream(Volunteer.Role.values()).filter(role -> role != Volunteer.Role.ADMIN).toList());
         model.addAttribute("volunteerPrivileges", Volunteer.Privilege.values());
         return "pages/volunteers";
     }
@@ -196,14 +205,15 @@ public class WebController {
     String saveVolunteer(@PathVariable long eventId, @RequestParam(required = false) Long id,
                          @RequestParam Map<String, String> input, RedirectAttributes flash, HttpSession session) {
         String base = "/events/" + eventId + "/volunteers";
-        return attempt(() -> { if (access.canManage(session, eventId)) service.saveVolunteer(eventId, id, input);
+        return attempt(() -> { if (access.canManage(session, eventId)) access.saveManagedVolunteer(eventId, id, input, session);
             else access.saveOwn(eventId, id, input, session); return base; },
                 base + editQuery(id) + "#editor", input, flash, "Volunteer saved.");
     }
 
     @PostMapping("/events/{eventId}/volunteers/{id}/delete")
-    String deleteVolunteer(@PathVariable long eventId, @PathVariable long id, RedirectAttributes flash) {
-        service.deleteVolunteer(eventId, id); flash.addFlashAttribute("notice", "Volunteer and their assignments deleted.");
+    String deleteVolunteer(@PathVariable long eventId, @PathVariable long id, RedirectAttributes flash, HttpSession session) {
+        try { access.deleteManagedVolunteer(eventId, id, session); flash.addFlashAttribute("notice", "Volunteer and their assignments deleted."); }
+        catch (IllegalArgumentException ex) { flash.addFlashAttribute("error", ex.getMessage()); }
         return "redirect:/events/" + eventId + "/volunteers";
     }
 

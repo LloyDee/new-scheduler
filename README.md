@@ -133,3 +133,19 @@ Run `bash gradlew test` with Java 21 and `node --test src/test/js/*.test.cjs`.
 `PhoneLoginIntegrationTest` exercises real login and permission checks. Existing business-flow
 integration tests use `ManagerAccessFixture` to keep their scheduling assertions independent
 of login setup. GitHub Actions runs both suites for pushes and pull requests.
+
+### App Owner and event administrators
+
+`scheduler.app-owner-phone` grants account-wide access independently of department assignments. It defaults to `8135160335`; set `SCHEDULER_APP_OWNER_PHONE` to override it. The app continues to use its existing phone-based login.
+
+App Owners manage all events. Event administrators manage their own event, appoint other administrators, and delete the event. Other organizers retain their existing management access within authorized events, without administrator-management or event-deletion access. Logs and notification management are available only to App Owners, event administrators, Overseers, and Assistant Overseers. Non-owner access follows the selected event; before selection, a qualifying role in any event is sufficient. Notification receiving remains available to every role. Use **Event administrator** in the volunteer editor to transfer responsibility: appoint a replacement before demoting or deleting the last administrator.
+
+On startup, existing department Admin roles migrate to event administrator permissions, retaining department membership as Volunteer. Events without administrators receive an administrator membership for the configured App Owner. This migration is repeat-safe. Newly created events assign their creator as administrator; service-created/sample events use the configured owner.
+
+Backups now use version 2 and retain event administrator status. Version 1 backups remain supported, converting legacy department Admin roles. Restores require an App Owner or event administrator and are rejected if they would leave the event without an administrator.
+
+### Access query regression checks
+
+`AccessQueryIntegrationTest` measures real HTTP request boundaries with Hibernate statistics and captured SQL. It covers App Owner, event Admin, Overseer, Assistant Overseer, Captain, Key Man, and Volunteer, including partial navigation and more than one page of events. Access lookups are cached only within each request; event permission controls use the already-loaded Events page. Managed volunteer writes acquire one event lock and validate administrator changes within that transaction.
+
+Measured with the local H2 fixture: App Owner Schedule requests decreased from 8 to 6 SQL statements; Settings and Logs decreased from 4 to 2. These are database statement counts, not production response-time guarantees. Run `gradlew.bat test` to check query budgets together with access and administrator-safety tests.

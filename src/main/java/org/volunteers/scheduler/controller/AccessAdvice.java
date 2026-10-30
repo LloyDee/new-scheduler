@@ -20,9 +20,11 @@ public class AccessAdvice {
                 .matcher(org.springframework.web.util.UrlPathHelper.defaultInstance.getPathWithinApplication(request));
         if (matcher.matches()) eventId = Long.valueOf(matcher.group(1));
         model.addAttribute("ownVolunteerIds", access.ids(session));
+        model.addAttribute("canAdminister", access.canAdminister(session, eventId));
+        model.addAttribute("isAppOwner", access.isAppOwner(session));
+        model.addAttribute("canManageLogsAndNotifications", access.canManageLogsAndNotifications(session, eventId));
         model.addAttribute("canManage", access.canManage(session, eventId));
         model.addAttribute("canCreateEvent", access.canManage(session, null));
-        model.addAttribute("manageableEventIds", access.manageableEventIds(session));
         String name = access.displayName(session);
         model.addAttribute("currentUserFirstName", name == null || name.isBlank() ? null : name.strip().split("\\s+", 2)[0]);
         model.addAttribute("signup", false);

@@ -49,7 +49,9 @@ class PhoneLookupTest {
             access.canManage(session, null);
             access.ids(session);
             access.department(session, 1L);
-            access.manageableEventIds(session);
+            access.canAdminister(session, 1L);
+            access.canManageLogsAndNotifications(session, 1L);
+            access.displayName(session);
             verify(volunteers).findAccessByPhone("2105550100");
             verify(volunteers, never()).findByNormalizedPhone(any());
         }

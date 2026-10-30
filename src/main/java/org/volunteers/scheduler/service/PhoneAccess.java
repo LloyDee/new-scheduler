@@ -17,6 +17,27 @@ public class PhoneAccess {
     public PhoneAccess(Volunteers volunteers, Events events, SchedulerService scheduler) {
         this.volunteers = volunteers; this.events = events; this.scheduler = scheduler;
     }
+    @org.springframework.beans.factory.annotation.Value("${scheduler.app-owner-phone:8135160335}")
+    private String ownerPhone;
+    public boolean isOwnerPhone(String phone) {
+        String key = normalize(phone);
+        return !key.isEmpty() && key.equals(normalize(ownerPhone));
+    }
+    public boolean isAppOwner(HttpSession session) {
+        return session != null && isOwnerPhone((String) session.getAttribute(SESSION));
+    }
+    public boolean canAdminister(HttpSession session, Long eventId) {
+        return isAppOwner(session) || permissions(session).stream()
+            .anyMatch(row -> Objects.equals(row.getEventId(), eventId) && row.getEventAdministrator());
+    }
+    public Volunteer saveManagedVolunteer(long eventId, Long id, Map<String,String> input, HttpSession session) {
+        if (!canManage(session, eventId)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        return scheduler.saveVolunteer(eventId, id, input, canAdminister(session, eventId));
+    }
+    public void deleteManagedVolunteer(long eventId, long id, HttpSession session) {
+        if (!canManage(session, eventId)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        scheduler.deleteVolunteer(eventId, id, canAdminister(session, eventId));
+    }
     public static String normalize(String phone) {
         if (phone == null || !phone.matches("[+0-9() .-]+")) return "";
         String digits = phone.replaceAll("[^0-9]", "");
@@ -42,7 +63,7 @@ public class PhoneAccess {
         return volunteers.findByNormalizedPhone(key);
     }
     public boolean signedIn(HttpSession session) {
-        return !permissions(session).isEmpty();
+        return isAppOwner(session) || !permissions(session).isEmpty();
     }
     public Set<Long> ids(HttpSession session) {
         Set<Long> ids = new HashSet<>();
@@ -50,19 +71,19 @@ public class PhoneAccess {
         return ids;
     }
     public boolean canManage(HttpSession session, Long eventId) {
-        return permissions(session).stream()
+        return isAppOwner(session) || permissions(session).stream()
             .filter(row -> eventId == null || row.getEventId().equals(eventId))
-            .anyMatch(row -> managementRole(row.getRole()));
+            .anyMatch(row -> row.getEventAdministrator() || managementRole(row.getRole()));
+    }
+    public boolean canManageLogsAndNotifications(HttpSession session, Long eventId) {
+        return isAppOwner(session) || permissions(session).stream()
+            .filter(row -> eventId == null || row.getEventId().equals(eventId))
+            .anyMatch(row -> row.getEventAdministrator() || row.getRole() == Volunteer.Role.OVERSEER
+                || row.getRole() == Volunteer.Role.ASSISTANT_OVERSEER);
     }
     public Long department(HttpSession session, long eventId) {
         return permissions(session).stream().filter(row -> row.getEventId().equals(eventId))
             .map(Volunteers.AccessRow::getDepartmentId).filter(Objects::nonNull).min(Long::compareTo).orElse(null);
-    }
-    public Set<Long> manageableEventIds(HttpSession session) {
-        Set<Long> result = new HashSet<>();
-        permissions(session).stream().filter(row -> managementRole(row.getRole()))
-            .forEach(row -> result.add(row.getEventId()));
-        return result;
     }
     public String displayName(HttpSession session) {
         Long active = session == null ? null : (Long) session.getAttribute("activeEvent");
@@ -72,7 +93,7 @@ public class PhoneAccess {
             .map(Volunteers.AccessRow::getName).filter(Objects::nonNull).findFirst().orElse(null);
     }
     private static boolean managementRole(Volunteer.Role role) {
-        return role != null && Set.of(Volunteer.Role.ADMIN, Volunteer.Role.OVERSEER,
+        return role != null && Set.of(Volunteer.Role.OVERSEER,
             Volunteer.Role.ASSISTANT_OVERSEER, Volunteer.Role.CAPTAIN).contains(role);
     }
     private List<Volunteers.AccessRow> permissions(HttpSession session) {
@@ -95,18 +116,7 @@ public class PhoneAccess {
     }
     @Transactional
     public Event saveEvent(Long id, Map<String, String> input, HttpSession session) {
-        Event event = scheduler.saveEvent(id, input);
-        if (id == null) {
-            Volunteer owner = matching((String) session.getAttribute(SESSION)).stream().findFirst().orElseThrow();
-            Department administration = scheduler.saveDepartment(event.getId(), null, Map.of("name", "Administration"));
-            Volunteer member = new Volunteer();
-            member.setEvent(event); member.setName(owner.getName()); member.setPhone(owner.getPhone());
-            member.setEmail(owner.getEmail()); member.setCongregation(owner.getCongregation());
-            member.setNotes(""); member.setPrivilege(owner.getPrivilege());
-            member.getDepartmentRoles().put(administration, Volunteer.Role.ADMIN);
-            volunteers.save(member);
-        }
-        return event;
+        return scheduler.saveEvent(id, input, (String) session.getAttribute(SESSION));
     }
     @Transactional
     public Volunteer signup(long eventId, Map<String, String> input) {
@@ -116,7 +126,7 @@ public class PhoneAccess {
         if (phone.isEmpty()) throw new IllegalArgumentException("Enter a valid 10-digit phone number.");
         if (!matching(phone).isEmpty()) throw new IllegalArgumentException("This phone number already exists. Please log in.");
         Map<String, String> safe = new HashMap<>(input);
-        safe.keySet().removeIf(k -> k.startsWith("departmentRole_"));
+        safe.keySet().removeIf(k -> k.startsWith("departmentRole_") || k.equals("eventAdministrator"));
         safe.put("departmentChoice", "none"); safe.put("phone", phone);
         return scheduler.saveVolunteer(eventId, null, safe);
     }

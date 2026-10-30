@@ -57,7 +57,7 @@ class BackupIntegrationTest extends ManagerAccessFixture {
     @Test void roundTripRestoresAllFieldsAndRelationshipsWithNewIds() {
         var backup = backups.capture(event.getId());
         var counts = backups.restore(event.getId(), backup.files());
-        assertThat(counts).containsEntry("departments", 2).containsEntry("volunteers", 2).containsEntry("shifts", 3).containsEntry("assignments", 2);
+        assertThat(counts).containsEntry("departments", 2).containsEntry("volunteers", 3).containsEntry("shifts", 3).containsEntry("assignments", 2);
         var result = scheduler.snapshot(event.getId());
         assertThat(result.departments()).extracting(Department::getId).doesNotContain(department.getId());
         assertThat(result.departments()).extracting(Department::getDescription).contains("'original\nnotes");
@@ -103,7 +103,7 @@ class BackupIntegrationTest extends ManagerAccessFixture {
             var backup = backups.capture(empty.getId());
             Department otherDepartment = scheduler.saveDepartment(empty.getId(), null, Map.of("name", "Keep this department"));
             backups.restore(event.getId(), backup.files());
-            assertThat(scheduler.snapshot(event.getId()).volunteers()).isEmpty();
+            assertThat(scheduler.snapshot(event.getId()).volunteers()).singleElement().satisfies(v -> assertThat(v.isEventAdministrator()).isTrue());
             assertThat(scheduler.department(empty.getId(), otherDepartment.getId()).getName()).isEqualTo("Keep this department");
         } finally { scheduler.deleteEvent(empty.getId()); }
     }
@@ -115,7 +115,7 @@ class BackupIntegrationTest extends ManagerAccessFixture {
         for (String kind : List.of("version", "duplicate", "date", "missing")) {
             var files = new HashMap<>(original);
             switch (kind) {
-                case "version" -> files.put("departments", departmentCsv.replace("\"scheduler-backup\",\"1\"", "\"scheduler-backup\",\"2\"").getBytes(StandardCharsets.UTF_8));
+                case "version" -> files.put("departments", departmentCsv.replace("\"scheduler-backup\",\"2\"", "\"scheduler-backup\",\"99\"").getBytes(StandardCharsets.UTF_8));
                 case "duplicate" -> files.put("departments", (departmentCsv + "\"" + department.getId() + "\",\"Duplicate\",\"\"\r\n").getBytes(StandardCharsets.UTF_8));
                 case "date" -> files.put("shifts", shiftCsv.replace("2026-10-29", "2000-01-01").getBytes(StandardCharsets.UTF_8));
                 default -> files.remove("volunteers");
@@ -140,8 +140,8 @@ class BackupIntegrationTest extends ManagerAccessFixture {
         String base = "/events/" + event.getId();
         mvc.perform(get(base + "/reports").param("type", "backup").session(session))
             .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Restore event from CSV backup")))
-            .andExpect(model().attribute("backupCounts", Map.of("volunteers", 2, "shifts", 3, "departments", 2)))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("Volunteers: 2 · Schedule/shifts: 3 · Departments: 2")))
+            .andExpect(model().attribute("backupCounts", Map.of("volunteers", 3, "shifts", 3, "departments", 2)))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Volunteers: 3 · Schedule/shifts: 3 · Departments: 2")))
             .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(">Download CSV</a>"))));
         var captured = (BackupService.Backup) session.getAttribute("csvBackup");
         for (String type : List.of("volunteers", "departments", "shifts")) {
@@ -157,7 +157,7 @@ class BackupIntegrationTest extends ManagerAccessFixture {
             .andExpect(redirectedUrl(base + "/reports?type=backup"));
         assertThat(((BackupService.Backup) session.getAttribute("csvBackup")).token()).isNotEqualTo(captured.token());
         mvc.perform(get(base + "/reports").param("type", "backup").session(session))
-            .andExpect(model().attribute("backupCounts", Map.of("volunteers", 2, "shifts", 3, "departments", 3)));
+            .andExpect(model().attribute("backupCounts", Map.of("volunteers", 3, "shifts", 3, "departments", 3)));
     }
 
     @Test void reportsOfferAutomaticFiltersAndEmptyBackupCounts() throws Exception {
@@ -170,7 +170,7 @@ class BackupIntegrationTest extends ManagerAccessFixture {
         try {
             mvc.perform(get("/events/" + empty.getId() + "/reports").param("type", "backup"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Volunteers: 0 · Schedule/shifts: 0 · Departments: 0")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Volunteers: 1 · Schedule/shifts: 0 · Departments: 0")));
         } finally { scheduler.deleteEvent(empty.getId()); }
     }
 

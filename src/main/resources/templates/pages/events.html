@@ -15,7 +15,7 @@
             <span class="welcome-symbol" aria-hidden="true">✳</span>
             <h2>Create an Event</h2>
             <p>
-              Create an event to organize departments, volunteers, and schedules. Events(CA or  RC) can only be created by users with Admin or Overseer privileges.
+              Create an event to organize departments, volunteers, and schedules. App Owners, event administrators, and authorized organizers can create events.
             </p>
             <div class="page-heading">
               <a th:if="${canCreateEvent}" class="button" th:href="@{/events(create=true)} + '#editor'">+ Create Event</a>
@@ -49,7 +49,7 @@
                 <button class="secondary">Open event →</button>
               </form>
               <a th:if="${manageableEventIds.contains(e.id)}" th:href="@{/events(edit=${e.id})} + '#editor'">Edit</a>
-              <form th:if="${manageableEventIds.contains(e.id)}"
+              <form th:if="${administrableEventIds.contains(e.id)}"
                 method="post"
                 th:action="@{/events/{id}/delete(id=${e.id})}"
                 data-confirm="Permanently delete this event and ALL its volunteers, departments, shifts, and assignments?"

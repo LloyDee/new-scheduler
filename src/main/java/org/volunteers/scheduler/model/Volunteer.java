@@ -8,6 +8,7 @@ import java.util.Map;
 @Table(indexes = @Index(name = "idx_volunteer_normalized_phone", columnList = "normalized_phone"))
 public class Volunteer {
     public enum Role {
+        // Legacy value retained only for migration and version 1 backups.
         ADMIN("Admin"), OVERSEER("Overseer"), ASSISTANT_OVERSEER("Assistant Overseer"), CAPTAIN("Captain"),KEY_MAN("Key Man"),VOLUNTEER("Volunteer");
         private final String label;
         Role(String label) { this.label = label; }
@@ -34,6 +35,10 @@ public class Volunteer {
     @Enumerated(EnumType.STRING)
     @Column(name = "department_role", nullable = false)
     private Map<Department, Role> departmentRoles = new LinkedHashMap<>();
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean eventAdministrator;
+    public boolean isEventAdministrator() { return eventAdministrator; }
+    public void setEventAdministrator(boolean value) { eventAdministrator = value; }
     public Privilege getPrivilege() { return privilege; }
     public Map<Department, Role> getDepartmentRoles() { return departmentRoles; }
     public Long getId() { return id; }

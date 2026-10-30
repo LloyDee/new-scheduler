@@ -33,6 +33,26 @@ public class SchedulerService {
         this.shifts = shifts; this.assignments = assignments;
     }
 
+    @org.springframework.beans.factory.annotation.Value("${scheduler.app-owner-phone:8135160335}")
+    private String ownerPhone;
+    public static final String LAST_ADMIN = "This event must retain at least one administrator. Assign another administrator before removing this one.";
+    @Transactional
+    public Volunteer ensureAdministrator(Event event, String phone) {
+        String key = PhoneAccess.normalize(phone);
+        require(!key.isEmpty(), "Configure a valid App Owner phone number.");
+        Volunteer member = volunteers.findByEventIdOrderByNameAscIdAsc(event.getId()).stream()
+            .filter(v -> key.equals(PhoneAccess.normalize(v.getPhone()))).findFirst().orElse(null);
+        if (member == null) {
+            var profile = volunteers.findByNormalizedPhone(key).stream().findFirst().orElse(null);
+            member = new Volunteer(); member.setEvent(event); member.setPhone(key);
+            member.setName(profile == null ? "App Owner" : profile.getName());
+            member.setEmail(profile == null ? "" : profile.getEmail());
+            member.setCongregation(profile == null ? "" : profile.getCongregation());
+            member.setNotes(""); member.setPrivilege(profile == null ? Volunteer.Privilege.PUBLISHER : profile.getPrivilege());
+        }
+        member.setEventAdministrator(true);
+        return volunteers.save(member);
+    }
     public List<Event> events() { return events.findAllByOrderByStartDateDescIdDesc(); }
     public org.springframework.data.domain.Page<Event> eventsPage(int page) {
         return events.findAllByOrderByStartDateDescIdDesc(org.springframework.data.domain.PageRequest.of(Math.max(0, page), 25));
@@ -81,6 +101,11 @@ public class SchedulerService {
 
     @Transactional
     public Event saveEvent(Long id, Map<String, String> input) {
+        return saveEvent(id, input, ownerPhone);
+    }
+
+    @Transactional
+    public Event saveEvent(Long id, Map<String, String> input, String administratorPhone) {
         Event.Type type;
         try { type = Event.Type.valueOf(input.getOrDefault("type", "")); }
         catch (IllegalArgumentException ex) { throw invalid("Choose an event type."); }
@@ -106,12 +131,26 @@ public class SchedulerService {
         }
         e.setName(name); e.setType(type); e.setStartDate(start); e.setEndDate(end); e.setVenue(venue);
         e.setAssembly(assembly);
-        return events.save(e);
+        Event saved = events.save(e);
+        if (id == null) ensureAdministrator(saved, administratorPhone);
+        return saved;
     }
 
     @Transactional
     public Volunteer saveVolunteer(long eventId, Long id, Map<String, String> input) {
+        return saveVolunteer(eventId, id, input, true);
+    }
+
+    /** Validate changes to administrator memberships under the same lock as the write. */
+    @Transactional
+    public Volunteer saveVolunteer(long eventId, Long id, Map<String, String> input, boolean mayAdminister) {
         Event e = events.lockForVolunteerUpdate(eventId).orElseThrow(SchedulerService::notFound);
+        List<Volunteer> existing = volunteers.findByEventIdOrderByNameAscIdAsc(eventId);
+        Volunteer current = id == null ? null : existing.stream().filter(v -> v.getId().equals(id))
+            .findFirst().orElseThrow(SchedulerService::notFound);
+        if (!mayAdminister && ((current != null && current.isEventAdministrator())
+                || Boolean.parseBoolean(input.get("eventAdministrator"))))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         String name = required(input, "name", 160), phone = required(input, "phone", 60);
         require(phone.matches("[0-9() .-]+"), "Enter a 10-digit phone number.");
         String phoneDigits = phone.replaceAll("[^0-9]", "");
@@ -137,12 +176,15 @@ public class SchedulerService {
             catch (IllegalArgumentException ex) { throw invalid("Choose a valid role for " + selected.getName() + "."); }
             departmentRoles.put(selected, role);
         }
+        require(departmentRoles.values().stream().noneMatch(role -> role == Volunteer.Role.ADMIN), "Use the event administrator setting instead of department Admin.");
+        boolean administrator = Boolean.parseBoolean(input.getOrDefault("eventAdministrator", "false"));
+        if (current != null && current.isEventAdministrator() && !administrator)
+            require(existing.stream().anyMatch(other -> !Objects.equals(other.getId(), id) && other.isEventAdministrator()), LAST_ADMIN);
         boolean noDepartment = "none".equals(input.get("departmentChoice"));
-        require(id == null || !noDepartment, "Choose a department and its role.");
-        require(!departmentRoles.isEmpty() || noDepartment,
+        require(administrator || id == null || !noDepartment, "Choose a department and its role.");
+        require(administrator || !departmentRoles.isEmpty() || noDepartment,
                 id == null ? "Choose a department and its role, or No Department Yet." : "Choose a department and its role.");
         require(!noDepartment || departmentRoles.isEmpty(), "No Department Yet cannot be combined with department roles.");
-        List<Volunteer> existing = volunteers.findByEventIdOrderByNameAscIdAsc(eventId);
         for (var membership : departmentRoles.entrySet()) {
             Volunteer.Role role = membership.getValue();
             int limit = role == Volunteer.Role.OVERSEER ? 1 : role == Volunteer.Role.ASSISTANT_OVERSEER ? 2 : Integer.MAX_VALUE;
@@ -152,8 +194,9 @@ public class SchedulerService {
             require(count < limit, membership.getKey().getName() + " allows at most " + limit + " "
                     + role.getLabel() + (limit == 1 ? "." : "s."));
         }
-        Volunteer v = id == null ? new Volunteer() : volunteer(eventId, id);
+        Volunteer v = current == null ? new Volunteer() : current;
         v.setEvent(e); v.setName(name); v.setPhone(phone); v.setEmail(email); v.setCongregation(congregation); v.setNotes(notes);
+        v.setEventAdministrator(administrator);
         v.setPrivilege(privilege);
         v.getDepartmentRoles().clear();
         v.getDepartmentRoles().putAll(departmentRoles);
@@ -267,7 +310,16 @@ public class SchedulerService {
 
     @Transactional
     public void deleteVolunteer(long eventId, long id) {
+        deleteVolunteer(eventId, id, true);
+    }
+
+    @Transactional
+    public void deleteVolunteer(long eventId, long id, boolean mayAdminister) {
+        events.lockForVolunteerUpdate(eventId).orElseThrow(SchedulerService::notFound);
         Volunteer v = volunteer(eventId, id);
+        if (v.isEventAdministrator() && !mayAdminister) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        require(!v.isEventAdministrator() || volunteers.findByEventIdOrderByNameAscIdAsc(eventId).stream()
+            .anyMatch(other -> !other.getId().equals(id) && other.isEventAdministrator()), LAST_ADMIN);
         assignments.deleteAll(assignments.findByShiftDepartmentEventIdOrderByIdAsc(eventId).stream()
                 .filter(a -> a.getVolunteer().getId().equals(id)).toList());
         assignments.flush(); volunteers.delete(v);
@@ -294,7 +346,7 @@ public class SchedulerService {
 
     @Transactional
     public void deleteEvent(long id) {
-        Event e = event(id);
+        Event e = events.lockForVolunteerUpdate(id).orElseThrow(SchedulerService::notFound);
         assignments.deleteAll(assignments.findByShiftDepartmentEventIdOrderByIdAsc(id)); assignments.flush();
         shifts.deleteAll(shifts.findByDepartmentEventIdOrderByDateAscStartTimeAscIdAsc(id)); shifts.flush();
         volunteers.deleteAll(volunteers.findByEventIdOrderByNameAscIdAsc(id));

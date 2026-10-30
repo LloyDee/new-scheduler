@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:notification-tests;DB_CLOSE_DELAY=-1",
-        "spring.jpa.hibernate.ddl-auto=create-drop", "scheduler.logs.password=test-secret"})
+        "spring.jpa.hibernate.ddl-auto=create-drop"})
 @AutoConfigureMockMvc
 class NotificationIntegrationTest extends ManagerAccessFixture {
     @Autowired MockMvc mvc;
@@ -25,22 +25,14 @@ class NotificationIntegrationTest extends ManagerAccessFixture {
     @Autowired AnnouncementReads reads;
     @BeforeEach void clear() { reads.deleteAll(); announcements.deleteAll(); }
 
-    @Test void settingsPasswordGateValidationAndLock() throws Exception {
+    @Test void settingsAllowsSendingWithoutPasswordAndValidatesMessages() throws Exception {
         MockHttpSession session = new MockHttpSession();
         mvc.perform(get("/settings").session(session)).andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(content().string(containsString("notification-bell")))
-                .andExpect(content().string(not(containsString("Send notification</button>"))));
-        mvc.perform(post("/settings/notifications").session(session).with(csrf()).param("message", "Blocked"))
-                .andExpect(status().isForbidden());
-        mvc.perform(post("/settings/notifications/unlock").session(session).param("password", "test-secret"))
-                .andExpect(status().isForbidden());
-        mvc.perform(post("/settings/notifications/unlock").session(session).with(csrf()).param("password", "snow"))
-                .andExpect(flash().attribute("notificationError", "Incorrect password."));
-        mvc.perform(post("/settings/notifications/unlock").session(session).with(csrf()).param("password", "test-secret"))
-                .andExpect(redirectedUrl("/settings#notification"));
-        assertThat(session.getAttribute("logsUnlocked")).isNull();
-        mvc.perform(get("/settings").session(session)).andExpect(content().string(containsString("Send notification</button>")));
+                .andExpect(content().string(containsString("Send notification</button>")))
+                .andExpect(content().string(not(containsString("Unlock Notification"))))
+                .andExpect(content().string(not(containsString("Lock Notification"))));
         for (String invalid : new String[]{"  ", "x".repeat(5001)}) {
             mvc.perform(post("/settings/notifications").session(session).with(csrf()).param("message", invalid))
                     .andExpect(flash().attribute("notificationDraft", invalid));
@@ -50,20 +42,17 @@ class NotificationIntegrationTest extends ManagerAccessFixture {
         mvc.perform(post("/settings/notifications").session(session).with(csrf()).param("message", "Hello\n<script>alert(1)</script>"))
                 .andExpect(flash().attribute("notice", "Notification sent."));
         assertThat(announcements.count()).isEqualTo(1);
-        mvc.perform(post("/settings/notifications/lock").session(session).with(csrf())).andExpect(status().is3xxRedirection());
-        mvc.perform(post("/settings/notifications").session(session).with(csrf()).param("message", "Blocked"))
-                .andExpect(status().isForbidden());
     }
 
-    @Test void attemptsAreLimitedAndExpire() throws Exception {
+    @Test void usersWithoutNotificationAccessCannotSeeComposerOrSend() throws Exception {
+        org.mockito.Mockito.when(phoneAccess.canManageLogsAndNotifications(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(false);
         MockHttpSession session = new MockHttpSession();
-        for (int i = 0; i < 5; i++) mvc.perform(post("/settings/notifications/unlock").session(session).with(csrf()).param("password", "bad"));
-        mvc.perform(post("/settings/notifications/unlock").session(session).with(csrf()).param("password", "test-secret"))
-                .andExpect(flash().attribute("notificationError", "Too many attempts. Try again in five minutes."));
-        assertThat(session.getAttribute("notificationUnlocked")).isNull();
-        session.setAttribute("notificationAttemptStart", 0L);
-        mvc.perform(post("/settings/notifications/unlock").session(session).with(csrf()).param("password", "test-secret"));
-        assertThat(session.getAttribute("notificationUnlocked")).isEqualTo(true);
+        mvc.perform(get("/settings").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("Send notification</button>"))));
+        mvc.perform(post("/settings/notifications").session(session).with(csrf()).param("message", "Blocked"))
+                .andExpect(status().isForbidden());
+        assertThat(announcements.count()).isZero();
     }
 
     @Test void unreadIsPersistentPerDeviceAndOnlyAcknowledgedIdsDisappear() throws Exception {
