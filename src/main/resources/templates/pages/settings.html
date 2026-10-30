@@ -7,7 +7,6 @@
 <body>
 <section>
     <link rel="stylesheet" th:href="@{/css/settings-app.css}" />
-    <script defer th:src="@{/js/settings-app.js}"></script>
     <div class="page-heading">
         <div>
             <p class="eyebrow">MAKE YOURSELF AT HOME</p>
@@ -16,7 +15,7 @@
         </div>
     </div>
     <div class="settings-grid">
-        <div class="card settings-card" id="data">
+        <div class="card settings-card" id="data" th:if="${canManage}">
             <h2>Data</h2>
             <p class="muted">Import volunteers in bulk using a CSV or Excel file (.csv, .xls, .xlsx), up to 10 MB.</p>
             <p th:if="${importError}" class="alert warning" role="alert" th:text="${importError}"></p>
@@ -85,7 +84,7 @@
                 <button>Save preferences</button>
             </form>
         </div>
-        <div class="card settings-card" id="notification">
+        <div class="card settings-card" id="notification" th:if="${canManage}">
             <h2>Notification</h2>
             <p th:if="${notificationError}" th:text="${notificationError}" role="alert"></p>
             <form th:unless="${session.notificationUnlocked == true}" class="form-stack" method="post" th:action="@{/settings/notifications/unlock}">

@@ -24,9 +24,10 @@ public class WebController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WebController.class);
     private final SchedulerService service;
     private final BackupService backups;
+    private final org.volunteers.scheduler.service.PhoneAccess access;
     private final org.volunteers.scheduler.service.VolunteerImportService imports;
-    public WebController(SchedulerService service, BackupService backups, org.volunteers.scheduler.service.VolunteerImportService imports) {
-        this.service = service; this.backups = backups; this.imports = imports;
+    public WebController(SchedulerService service, BackupService backups, org.volunteers.scheduler.service.VolunteerImportService imports, org.volunteers.scheduler.service.PhoneAccess access) {
+        this.access = access; this.service = service; this.backups = backups; this.imports = imports;
     }
 
     @GetMapping("/settings/data/volunteers/template.csv")
@@ -61,11 +62,13 @@ public class WebController {
     }
 
     @ModelAttribute
-    void common(Model model, HttpSession session,
+    void common(Model model, HttpSession session, HttpServletRequest request,
                 @CookieValue(name = "schedulerTimeFormat", defaultValue = "12") String format) {
         model.addAttribute("event", null);
         Object id = session.getAttribute("activeEvent");
-        if (id instanceof Long eventId) {
+        String path = org.springframework.web.util.UrlPathHelper.defaultInstance.getPathWithinApplication(request);
+        boolean eventPage = path.equals("/events") || path.matches("/events/\\d+/(home|volunteers|departments|schedule|reports|more)");
+        if (id instanceof Long eventId && !eventPage && Set.of("GET", "HEAD").contains(request.getMethod())) {
             try { model.addAttribute("event", service.event(eventId)); }
             catch (org.springframework.web.server.ResponseStatusException ex) { session.removeAttribute("activeEvent"); }
         }
@@ -76,16 +79,26 @@ public class WebController {
     @GetMapping("/")
     String index(HttpSession session) {
         Long id = (Long) session.getAttribute("activeEvent");
-        return id == null ? "pages/home" : "redirect:/events/" + id + "/home";
+        return id == null ? "redirect:/events" : "redirect:/events/" + id + "/home";
     }
 
     @GetMapping("/events")
     String events(@RequestParam(required = false) Long edit,
-                  @RequestParam(defaultValue = "false") boolean create, Model model) {
-        model.addAttribute("events", service.events()); model.addAttribute("types", Event.Type.values());
+                  @RequestParam(defaultValue = "false") boolean create, @RequestParam(defaultValue = "0") int page,
+                  Model model, HttpSession session) {
+        var eventPage = service.eventsPage(page);
+        var events = eventPage.getContent();
+        model.addAttribute("listPage", eventPage);
+        model.addAttribute("events", events); model.addAttribute("types", Event.Type.values());
+        Event active = events.stream().filter(e -> e.getId().equals(session.getAttribute("activeEvent"))).findFirst().orElse(null);
+        if (active == null && session.getAttribute("activeEvent") instanceof Long activeId) {
+            try { active = service.event(activeId); }
+            catch (org.springframework.web.server.ResponseStatusException ex) { session.removeAttribute("activeEvent"); }
+        }
+        model.addAttribute("event", active);
         Map<String, String> defaults = new HashMap<>();
         if (edit != null) {
-            Event e = service.event(edit);
+            Event e = events.stream().filter(item -> item.getId().equals(edit)).findFirst().orElseGet(() -> service.event(edit));
             defaults.putAll(Map.of("name", e.getName(), "type", e.getType().name(), "startDate", e.getStartDate().toString(),
                     "endDate", e.getEndDate().toString(), "venue", e.getVenue()));
             defaults.put("assembly", e.getAssembly() == null ? "" : e.getAssembly());
@@ -99,7 +112,7 @@ public class WebController {
     String saveEvent(@RequestParam(required = false) Long id, @RequestParam Map<String, String> input,
                      RedirectAttributes flash, HttpSession session) {
         return attempt(() -> {
-            Event e = service.saveEvent(id, input); session.setAttribute("activeEvent", e.getId());
+            Event e = access.saveEvent(id, input, session); session.setAttribute("activeEvent", e.getId());
             return "/events/" + e.getId() + "/home";
         }, id == null ? "/events?create=true" : "/events" + editQuery(id), input, flash, "Event saved.");
     }
@@ -121,9 +134,11 @@ public class WebController {
         var data = prepare(eventId, model, session);
         model.addAttribute("missing", data.rows().stream().mapToInt(SchedulerService.ShiftRow::getMissing).sum());
         LocalDateTime now = LocalDateTime.now();
+        Set<Long> ownIds = access.ids(session);
         model.addAttribute("upcoming", data.rows().stream().filter(r ->
+                        r.assignments().stream().anyMatch(a -> ownIds.contains(a.getVolunteer().getId())) &&
                         LocalDateTime.of(r.shift().getDate(), r.shift().getEndTime()).isAfter(now))
-                .limit(5).toList());
+                .toList());
         return "pages/home";
     }
 
@@ -132,19 +147,22 @@ public class WebController {
                       @RequestParam(required = false) Long departmentId,
                       @RequestParam(required = false) Long edit, @RequestParam(required = false) Long view,
                       @RequestParam(required = false) Long assignments,
+                      @RequestParam(defaultValue = "0") int page,
                       @RequestParam(defaultValue = "false") boolean create,
-                      Model model, HttpSession session) {
-        var data = prepare(eventId, model, session);
+                      Model model, HttpSession session, HttpServletRequest request) {
+        final Long selectedDepartment = request.getParameter("departmentId") == null ? access.department(session, eventId) : departmentId;
+        var details = java.util.stream.Stream.of(edit, view, assignments).filter(Objects::nonNull).toList();
+        var result = service.volunteerPage(eventId, selectedDepartment, q, page, details);
+        var data = result.snapshot();
+        prepare(data, model, session);
+        model.addAttribute("listPage", result.page());
         String query = q.strip().toLowerCase(Locale.ROOT);
         model.addAttribute("q", q);
-        model.addAttribute("departmentId", departmentId);
-        model.addAttribute("filteredVolunteers", data.volunteers().stream()
-                .filter(v -> departmentId == null || v.getDepartmentRoles().keySet().stream()
-                        .anyMatch(d -> d.getId().equals(departmentId))).filter(v ->
-                (v.getName() + " " + v.getCongregation() + " " + v.getPhone() + " " + v.getEmail()).toLowerCase(Locale.ROOT).contains(query)).toList());
+        model.addAttribute("departmentId", selectedDepartment);
+        model.addAttribute("filteredVolunteers", result.page().getContent());
         Map<String, String> defaults = new HashMap<>();
         if (edit != null) {
-            Volunteer v = service.volunteer(eventId, edit);
+            Volunteer v = snapshotVolunteer(data, edit);
             defaults.putAll(Map.of("name", v.getName(), "phone", v.getPhone(), "email", v.getEmail(),
                     "congregation", v.getCongregation(), "notes", v.getNotes()));
             defaults.put("privilege", v.getPrivilege() == null ? "" : v.getPrivilege().name());
@@ -154,15 +172,16 @@ public class WebController {
         @SuppressWarnings("unchecked")
         List<Volunteer> visible = (List<Volunteer>) model.getAttribute("filteredVolunteers");
         visible.forEach(v -> dialogVolunteers.put(v.getId(), v));
-        if (view != null) dialogVolunteers.put(view, service.volunteer(eventId, view));
+        if (view != null) dialogVolunteers.put(view, snapshotVolunteer(data, view));
         model.addAttribute("dialogVolunteers", dialogVolunteers.values());
         model.addAttribute("openVolunteerId", view);
         Map<Long, List<SchedulerService.ShiftRow>> volunteerAssignments = new HashMap<>();
-        dialogVolunteers.keySet().forEach(id -> volunteerAssignments.put(id, data.rows().stream()
+        var rows = data.rows();
+        dialogVolunteers.keySet().forEach(id -> volunteerAssignments.put(id, rows.stream()
                 .filter(row -> row.assignments().stream().anyMatch(a -> a.getVolunteer().getId().equals(id))).toList()));
         model.addAttribute("volunteerAssignments", volunteerAssignments);
         if (assignments != null) {
-            model.addAttribute("assignmentVolunteer", service.volunteer(eventId, assignments));
+            model.addAttribute("assignmentVolunteer", snapshotVolunteer(data, assignments));
             model.addAttribute("personalRows", data.rows().stream()
                     .filter(row -> row.assignments().stream().anyMatch(a -> a.getVolunteer().getId().equals(assignments))).toList());
         }
@@ -175,9 +194,10 @@ public class WebController {
 
     @PostMapping("/events/{eventId}/volunteers/save")
     String saveVolunteer(@PathVariable long eventId, @RequestParam(required = false) Long id,
-                         @RequestParam Map<String, String> input, RedirectAttributes flash) {
+                         @RequestParam Map<String, String> input, RedirectAttributes flash, HttpSession session) {
         String base = "/events/" + eventId + "/volunteers";
-        return attempt(() -> { service.saveVolunteer(eventId, id, input); return base; },
+        return attempt(() -> { if (access.canManage(session, eventId)) service.saveVolunteer(eventId, id, input);
+            else access.saveOwn(eventId, id, input, session); return base; },
                 base + editQuery(id) + "#editor", input, flash, "Volunteer saved.");
     }
 
@@ -190,31 +210,39 @@ public class WebController {
     @GetMapping("/events/{eventId}/departments")
     String departments(@PathVariable long eventId, @RequestParam(required = false) Long edit,
                        @RequestParam(required = false) Long view, @RequestParam(defaultValue = "false") boolean create,
+                       @RequestParam(defaultValue = "0") int page,
                        Model model, HttpSession session) {
         var data = prepare(eventId, model, session);
+        var departmentPage = page(data.departments(), page);
+        model.addAttribute("listPage", departmentPage);
+        model.addAttribute("departments", departmentPage.getContent());
         Map<String, String> defaults = new HashMap<>();
         if (edit != null) {
-            Department d = service.department(eventId, edit);
+            Department d = snapshotDepartment(data, edit);
             defaults.putAll(Map.of("name", d.getName(), "description", d.getDescription()));
         }
         Map<Long, Map<String, Object>> departmentDetails = new HashMap<>();
-        for (Department d : data.departments()) {
+        Map<Long, List<SchedulerService.ShiftRow>> departmentSchedules = new HashMap<>();
+        var rows = data.rows();
+        for (Department d : departmentPage.getContent()) {
+            departmentSchedules.put(d.getId(), rows.stream().filter(row -> row.shift().getDepartment().getId().equals(d.getId())).toList());
             List<Volunteer> members = data.volunteers().stream()
                     .filter(v -> v.getDepartmentRoles().keySet().stream().anyMatch(dept -> dept.getId().equals(d.getId()))).toList();
             Map<String, Object> details = new HashMap<>();
             details.put("volunteerCount", members.size());
             for (Volunteer.Role role : List.of(Volunteer.Role.OVERSEER, Volunteer.Role.ASSISTANT_OVERSEER)) {
-                List<String> names = members.stream()
+                List<Volunteer> names = members.stream()
                         .filter(v -> v.getDepartmentRoles().entrySet().stream()
                                 .anyMatch(entry -> entry.getKey().getId().equals(d.getId()) && entry.getValue() == role))
-                        .map(Volunteer::getName).toList();
+                        .toList();
                 details.put(role.name(), names);
             }
             departmentDetails.put(d.getId(), details);
         }
         model.addAttribute("departmentDetails", departmentDetails);
+        model.addAttribute("departmentSchedules", departmentSchedules);
         if (view != null) {
-            model.addAttribute("selectedDepartment", service.department(eventId, view));
+            model.addAttribute("selectedDepartment", snapshotDepartment(data, view));
             model.addAttribute("departmentRows", data.rows().stream().filter(r -> r.shift().getDepartment().getId().equals(view)).toList());
         }
         draft(model, defaults); model.addAttribute("editId", edit);
@@ -240,12 +268,18 @@ public class WebController {
     String schedule(@PathVariable long eventId, @RequestParam(required = false) Long edit,
                     @RequestParam(defaultValue = "false") boolean create,
                     @RequestParam(required = false) Long departmentId, @RequestParam(required = false) LocalDate date,
-                    Model model, HttpSession session) {
+                    @RequestParam(defaultValue = "0") int page,
+                    Model model, HttpSession session, HttpServletRequest request) {
         var data = prepare(eventId, model, session);
+        if (request.getParameter("departmentId") == null) departmentId = access.department(session, eventId);
         filter(data, departmentId, date, model);
+        @SuppressWarnings("unchecked") var filteredRows = (List<SchedulerService.ShiftRow>) model.getAttribute("rows");
+        var shiftPage = page(filteredRows, page);
+        model.addAttribute("listPage", shiftPage);
+        model.addAttribute("rows", shiftPage.getContent());
         Map<Long, List<Volunteer>> assignmentOptions = new HashMap<>();
         Map<Long, Set<Long>> assignedVolunteerIds = new HashMap<>();
-        data.shifts().forEach(s -> {
+        shiftPage.getContent().stream().map(SchedulerService.ShiftRow::shift).forEach(s -> {
             Set<Long> current = new HashSet<>();
             data.assignments().stream().filter(a -> a.getShift().getId().equals(s.getId()))
                     .forEach(a -> current.add(a.getVolunteer().getId()));
@@ -263,7 +297,8 @@ public class WebController {
         Map<String, String> defaults = new HashMap<>(Map.of("date", data.event().getStartDate().toString(), "requiredCount", "1"));
         if (departmentId != null) defaults.put("departmentId", departmentId.toString());
         if (edit != null) {
-            Shift s = service.shift(eventId, edit);
+            Shift s = data.shifts().stream().filter(item -> item.getId().equals(edit)).findFirst()
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND));
             defaults.putAll(Map.of("name", s.getName(), "departmentId", s.getDepartment().getId().toString(), "date", s.getDate().toString(),
                     "startTime", s.getStartTime().toString(), "endTime", s.getEndTime().toString(),
                     "requiredCount", Integer.toString(s.getRequiredCount()), "notes", s.getNotes()));
@@ -335,7 +370,10 @@ public class WebController {
 
     @GetMapping("/events/{eventId}/more")
     String more(@PathVariable long eventId, Model model, HttpSession session) {
-        prepare(eventId, model, session); return "pages/more";
+        model.addAttribute("event", service.event(eventId));
+        model.addAttribute("base", "/events/" + eventId);
+        session.setAttribute("activeEvent", eventId);
+        return "pages/more";
     }
 
     @GetMapping("/settings")
@@ -452,18 +490,38 @@ public class WebController {
         return "redirect:/events/" + eventId + "/reports?type=backup";
     }
 
+    private static Volunteer snapshotVolunteer(SchedulerService.Snapshot data, long id) {
+        return data.volunteers().stream().filter(v -> v.getId().equals(id)).findFirst()
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND));
+    }
+    private static Department snapshotDepartment(SchedulerService.Snapshot data, long id) {
+        return data.departments().stream().filter(d -> d.getId().equals(id)).findFirst()
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND));
+    }
     private SchedulerService.Snapshot prepare(long eventId, Model model, HttpSession session) {
-        var data = service.snapshot(eventId); session.setAttribute("activeEvent", eventId);
+        var data = service.snapshot(eventId);
+        prepare(data, model, session);
+        return data;
+    }
+    private void prepare(SchedulerService.Snapshot data, Model model, HttpSession session) {
+        long eventId = data.event().getId(); session.setAttribute("activeEvent", eventId);
         model.addAttribute("event", data.event()); model.addAttribute("base", "/events/" + eventId);
         model.addAttribute("volunteers", data.volunteers()); model.addAttribute("departments", data.departments());
-        model.addAttribute("allRows", data.rows()); return data;
+        model.addAttribute("allRows", data.rows());
+    }
+    private static <T> org.springframework.data.domain.Page<T> page(List<T> items, int number) {
+        int safePage = Math.max(0, number);
+        int start = (int) Math.min((long) safePage * 25, items.size());
+        return new org.springframework.data.domain.PageImpl<>(items.subList(start, Math.min(start + 25, items.size())),
+            org.springframework.data.domain.PageRequest.of(safePage, 25), items.size());
     }
     private List<SchedulerService.ShiftRow> filter(SchedulerService.Snapshot data, Long departmentId, LocalDate date, Model model) {
         var rows = filtered(data, departmentId, date);
         model.addAttribute("rows", rows); model.addAttribute("departmentId", departmentId); model.addAttribute("date", date); return rows;
     }
     private List<SchedulerService.ShiftRow> filtered(SchedulerService.Snapshot data, Long departmentId, LocalDate date) {
-        if (departmentId != null) service.department(data.event().getId(), departmentId);
+        if (departmentId != null && data.departments().stream().noneMatch(d -> d.getId().equals(departmentId)))
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND);
         return data.rows().stream().filter(r -> departmentId == null || r.shift().getDepartment().getId().equals(departmentId))
                 .filter(r -> date == null || r.shift().getDate().equals(date)).toList();
     }

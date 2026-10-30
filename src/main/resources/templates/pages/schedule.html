@@ -7,9 +7,8 @@
   <body>
     <section>
       <link rel="stylesheet" th:href="@{/css/settings-app.css}" />
-      <script defer th:src="@{/js/schedule.js}"></script>
       <div class="page-heading">
-        <a class="button" th:href="${base + '/schedule?create=true#editor'}"
+        <a th:if="${canManage}" class="button" th:href="${base + '/schedule?create=true#editor'}"
           >+ Create shift</a
           >
       </div>
@@ -48,9 +47,10 @@
           </form>
           <p
             class="list-count"
-            th:text="${rows.size() + ' shifts · ordered by date and time'}"
+            th:text="${listPage.totalElements + ' shifts · ordered by date and time'}"
           ></p>
           <div th:replace="~{shared/fragments :: shifts(${rows}, true)}"></div>
+          <nav th:replace="~{shared/fragments :: pagination(${listPage}, @{${base + '/schedule'}(page=${listPage.number - 1},departmentId=${departmentId},date=${date})}, @{${base + '/schedule'}(page=${listPage.number + 1},departmentId=${departmentId},date=${date})})}"></nav>
         </div>
         <aside class="card editor" id="editor" th:if="${showEditor}">
           <p class="eyebrow">SHIFT DETAILS</p>
@@ -59,7 +59,7 @@
           ></h2>
           <div th:if="${departments.isEmpty()}" class="empty">
             <p>Add a department before creating shifts.</p>
-            <a class="button" th:href="${base + '/departments?create=true#editor'}"
+            <a th:if="${canManage}" class="button" th:href="${base + '/departments?create=true#editor'}"
               >Add department</a
             >
           </div>

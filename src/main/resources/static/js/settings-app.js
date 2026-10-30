@@ -1,3 +1,5 @@
+(() => {
+function initializeSettings() {
 document.querySelectorAll('[data-app-dialog]').forEach((button) => {
     button.addEventListener('click', () => {
         const dialog = document.getElementById(button.dataset.appDialog);
@@ -7,3 +9,7 @@ document.querySelectorAll('[data-app-dialog]').forEach((button) => {
         }
     });
 });
+}
+document.addEventListener('scheduler:page', initializeSettings);
+initializeSettings();
+})();

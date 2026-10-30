@@ -21,7 +21,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
     "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 @AutoConfigureMockMvc
-class BackupIntegrationTest {
+class BackupIntegrationTest extends ManagerAccessFixture {
     @Autowired SchedulerService scheduler;
     @Autowired BackupService backups;
     @Autowired MockMvc mvc;

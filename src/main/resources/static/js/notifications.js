@@ -91,6 +91,7 @@
     refresh();
   });
   window.addEventListener('focus', refresh);
+  document.addEventListener('scheduler:page', refresh);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   setInterval(() => { if (!document.hidden) refresh(); }, 30000);
   refresh();

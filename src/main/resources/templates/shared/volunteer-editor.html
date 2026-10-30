@@ -1,0 +1,118 @@
+<!doctype html><html xmlns:th="http://www.thymeleaf.org"><body>
+        <aside th:fragment="editor" class="card editor" id="editor" th:if="${showEditor}">
+            <p class="eyebrow">VOLUNTEER DETAILS</p>
+            <h2
+                    th:text="${editId == null ? 'Add a volunteer' : 'Edit volunteer'}"
+            ></h2>
+            <form
+                    class="form-stack"
+                    method="post"
+                    th:action="@{${signup ? '/signup' : base + '/volunteers/save'}}"
+            >
+                <label th:if="${signup}">Event
+                <select name="eventId" required><option value="">Choose an event</option>
+                <option th:each="e : ${events}" th:value="${e.id}" th:text="${e.name}" th:selected="${draft['eventId'] == e.id.toString()}"></option></select></label>
+                <input
+                        th:if="${editId != null}"
+                        type="hidden"
+                        name="id"
+                        th:value="${editId}"
+                /><label
+            >Full name
+                <input
+                        name="name"
+                        placeholder="Juan Bautista"
+                        required
+                        maxlength="160"
+                        autocomplete="name"
+                        th:value="${draft['name']}"/></label
+            ><label
+            >Phone
+                <input
+                        name="phone"
+                        required
+                        type="tel"
+                        data-phone
+                        placeholder="(813)516-0335"
+                        inputmode="numeric"
+                        minlength="13"
+                        maxlength="13"
+                        pattern="\([0-9]{3}\)[0-9]{3}-[0-9]{4}"
+                        title="Enter 10 digits, formatted as (813)516-0335."
+                        autocomplete="tel"
+                        th:value="${draft['phone']}"/></label
+            ><label>Email <span class="optional">optional</span>
+              <input
+                    name="email"
+                    type="email"
+                    maxlength="254"
+                    autocomplete="email"
+                    th:value="${draft['email']}"/></label
+            ><label
+            >Congregation
+                <input
+                        name="congregation"
+                        required
+                        maxlength="160"
+                        th:value="${draft['congregation']}"/></label
+            ><label
+            >Privilege
+                <select name="privilege" required>
+                    <option value="">Choose a privilege</option>
+                    <option th:each="privilege : ${volunteerPrivileges}"
+                            th:value="${privilege.name()}" th:text="${privilege.label}"
+                            th:selected="${draft['privilege'] == privilege.name()}"></option>
+                </select></label>
+                <fieldset th:if="${canManage and !signup}" class="form-stack" data-department-picker>
+                    <legend>Departments and roles</legend>
+                    <p class="muted" th:if="${editId == null}">Select a department and role, or choose No Department Yet. Volunteers without a department join their first assigned shift's department as a Volunteer.</p>
+                    <p class="muted" th:if="${editId != null}">Select a department and role.</p>
+                    <p class="muted" th:if="${departments.isEmpty()}">
+                        <a th:href="${base + '/departments?create=true#editor'}">Add a department</a> to select
+                        departments and roles<span th:if="${editId == null}">, or select No Department Yet below</span>.
+                    </p>
+
+                    <div class="form-stack" th:each="department : ${departments}"
+                         data-department-membership th:attr="data-department-id=${department.id}"
+                         th:hidden="${#strings.isEmpty(draft['departmentRole_' + department.id])}">
+                        <label>
+                            <span th:text="${department.name + ' role'}"></span>
+                            <select th:name="${'departmentRole_' + department.id}"
+                                    th:required="${!#strings.isEmpty(draft['departmentRole_' + department.id])}">
+                                <option value="">Choose a role</option>
+                                <option th:each="role : ${volunteerRoles}"
+                                        th:value="${role.name()}" th:text="${role.label}"
+                                        th:selected="${draft['departmentRole_' + department.id] == role.name()}"></option>
+                            </select>
+                        </label>
+                        <button type="button" class="text-button danger" data-remove-department
+                                th:attr="aria-label=${'Remove ' + department.name}">Remove department
+                        </button>
+                    </div>
+                    <label>Department
+                        <select name="departmentChoice" data-department-select required>
+                            <option value="">Choose a department</option>
+                            <option th:if="${editId == null}" value="none" th:selected="${draft['departmentChoice'] == 'none'}">No Department Yet</option>
+                            <option th:each="department : ${departments}"
+                                    th:value="${department.id}" th:text="${department.name}"></option>
+                        </select>
+                    </label>
+                </fieldset>
+                <label>Notes <span class="optional">optional</span
+                ><textarea
+                        name="notes"
+                        rows="3"
+                        maxlength="2000"
+                        th:text="${draft['notes']}"
+                ></textarea></label
+                >
+                <button
+                        th:text="${signup ? 'Sign up' : (editId == null ? 'Add volunteer' : 'Save changes')}"
+                ></button
+                >
+                <a th:href="${signup ? '/login' : base + '/volunteers'}"
+                >Cancel</a
+                >
+            </form>
+        </aside>
+</body></html>

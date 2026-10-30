@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:role-repair-tests;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "spring.jpa.hibernate.ddl-auto=create-drop"})
 @AutoConfigureMockMvc
-class VolunteerRoleConstraintIntegrationTest {
+class VolunteerRoleConstraintIntegrationTest extends ManagerAccessFixture {
     @Autowired SchedulerService scheduler;
     @Autowired VolunteerImportService imports;
     @Autowired Volunteers volunteers;

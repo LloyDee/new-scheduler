@@ -1,6 +1,11 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
   <body>
+    <nav th:fragment="pagination(page, previous, next)" th:if="${page.totalPages > 1}" class="list-pagination" aria-label="List pages">
+      <a class="button secondary" th:if="${page.hasPrevious()}" th:href="${previous}">Previous</a>
+      <span th:text="${'Page ' + (page.number + 1) + ' of ' + page.totalPages + ' · ' + page.totalElements + ' total'}"></span>
+      <a class="button secondary" th:if="${page.hasNext()}" th:href="${next}">Next</a>
+    </nav>
     <div th:fragment="shifts(items, editable)" class="shift-list">
       <div class="empty card" th:if="${items.isEmpty()}">
         <h3>No shifts to show</h3>
@@ -45,10 +50,10 @@
         <div class="assigned-list" th:if="${!row.assignments.isEmpty()}">
           <div class="assigned-person" th:each="assignment : ${row.assignments}">
             <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4" /><path d="M4 21v-3a8 8 0 0 1 16 0v3" /></svg>
-            <span th:text="${assignment.volunteer.name}" th:title="${assignment.volunteer.name}"></span>
+            <span th:classappend="${ownVolunteerIds.contains(assignment.volunteer.id) ? 'current-user-name' : ''}" th:text="${assignment.volunteer.name}" th:title="${assignment.volunteer.name}"></span>
           </div>
         </div>
-        <th:block th:if="${editable}">
+        <th:block th:if="${editable and canManage}">
           <th:block th:if="${!assignmentOptions[row.shift.id].isEmpty()}">
             <button type="button" class="secondary"
                     th:attr="data-assignment-dialog=${'assignment-dialog-' + row.shift.id},aria-controls=${'assignment-dialog-' + row.shift.id}"

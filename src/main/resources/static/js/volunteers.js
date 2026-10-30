@@ -1,4 +1,5 @@
 (() => {
+function initializeVolunteers() {
   const triggers = [...document.querySelectorAll('[data-volunteer-dialog]')];
   const openDialog = (dialog, trigger) => {
     if (!dialog || dialog.open || typeof dialog.showModal !== 'function') return false;
@@ -18,4 +19,7 @@
   });
   const selected = document.querySelector('.volunteer-dialog[data-open-on-load="true"]');
   if (selected) openDialog(selected, triggers.find(trigger => trigger.dataset.volunteerDialog === selected.id));
+}
+document.addEventListener('scheduler:page', initializeVolunteers);
+initializeVolunteers();
 })();

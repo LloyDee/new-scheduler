@@ -21,41 +21,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 @AutoConfigureMockMvc
-class LogsIntegrationTest {
+class LogsIntegrationTest extends ManagerAccessFixture {
     @Autowired MockMvc mvc;
     @Autowired DeviceVisits visits;
     @Autowired DeviceVisitService service;
     @BeforeEach void clear() { visits.deleteAll(); }
 
-    @Test void passwordGateSessionLockAndCsrf() throws Exception {
+    @Test void managersOpenLogsWithoutPasswordAndOthersReceive403() throws Exception {
         service.record(UUID.randomUUID().toString(), Map.of("city", "PrivateCity"));
         MockHttpSession session = new MockHttpSession();
         mvc.perform(get("/logs").session(session)).andExpect(status().isOk())
             .andExpect(header().string("Cache-Control", "no-store"))
-            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("PrivateCity"))));
-        mvc.perform(post("/logs/unlock").session(session).param("password", "snow")).andExpect(status().isForbidden());
-        mvc.perform(post("/logs/unlock").session(session).with(csrf()).param("password", "wrong"))
-            .andExpect(flash().attribute("logsError", "Incorrect password."));
-        assertThat(session.getAttribute("logsUnlocked")).isNull();
-        mvc.perform(post("/logs/unlock").session(session).with(csrf()).param("password", "snow"))
-            .andExpect(redirectedUrl("/logs"));
-        mvc.perform(get("/logs").session(session)).andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("PrivateCity")));
-        mvc.perform(post("/logs/lock").session(session).with(csrf())).andExpect(redirectedUrl("/logs"));
-        assertThat(session.getAttribute("logsUnlocked")).isNull();
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("PrivateCity")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Unlock Logs"))));
+        org.mockito.Mockito.when(phoneAccess.canManage(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(false);
+        mvc.perform(get("/logs").session(session)).andExpect(status().isForbidden());
     }
-
-    @Test void failedAttemptsAreLimitedAndExpire() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        for (int i = 0; i < 5; i++) mvc.perform(post("/logs/unlock").session(session).with(csrf()).param("password", "wrong"));
-        mvc.perform(post("/logs/unlock").session(session).with(csrf()).param("password", "snow"))
-            .andExpect(flash().attribute("logsError", "Too many attempts. Try again in five minutes."));
-        assertThat(session.getAttribute("logsUnlocked")).isNull();
-        session.setAttribute("logsAttemptStart", 0L);
-        mvc.perform(post("/logs/unlock").session(session).with(csrf()).param("password", "snow"));
-        assertThat(session.getAttribute("logsUnlocked")).isEqualTo(true);
-    }
-
     @Test void recordingUsesPersistentCookieAndPreservesLocation() throws Exception {
         mvc.perform(post("/api/device-visits").contentType("application/json").content("{}"))
             .andExpect(status().isForbidden());
@@ -88,14 +69,19 @@ class LogsIntegrationTest {
 
     @Test void emptyPaginationAndEscaping() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute("logsUnlocked", true);
         mvc.perform(get("/logs").session(session)).andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("No device visits recorded yet.")));
         for (int i = 0; i < 26; i++) service.record(UUID.randomUUID().toString(), Map.of("browser", "<script>alert(1)</script>"));
         mvc.perform(get("/logs").session(session)).andExpect(status().isOk())
+            .andExpect(model().attribute("logs", org.hamcrest.Matchers.hasProperty("numberOfElements", org.hamcrest.Matchers.is(10))))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Page 1 of 3")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Next")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("&lt;script&gt;")));
         mvc.perform(get("/logs").param("page", "1").session(session)).andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Previous")));
+        mvc.perform(get("/logs").param("page", "2").session(session)).andExpect(status().isOk())
+            .andExpect(model().attribute("logs", org.hamcrest.Matchers.hasProperty("numberOfElements", org.hamcrest.Matchers.is(6))))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Page 3 of 3")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(">Next</a>"))));
     }
 }

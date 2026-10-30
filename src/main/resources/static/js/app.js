@@ -1,3 +1,5 @@
+(() => {
+function initializePage() {
 document.querySelectorAll("[data-phone]").forEach((input) => {
   const formatPhone = () => {
     const caret = input.selectionStart;
@@ -111,6 +113,10 @@ if (eventForm) {
   updateEvent();
 }
 
+}
+document.addEventListener('scheduler:page', initializePage);
+initializePage();
+
 document.addEventListener("submit", (event) => {
   const message = event.target.dataset.confirm;
   if (message && !window.confirm(message)) event.preventDefault();
@@ -119,28 +125,28 @@ document.addEventListener("click", (event) => {
   if (event.target.closest("[data-print]")) window.print();
 });
 
-const moreNavigation = document.querySelector(".more-navigation");
-if (moreNavigation) {
-  const toggle = moreNavigation.querySelector(".more-toggle");
-  const menu = moreNavigation.querySelector(".more-menu");
-  const setOpen = (open) => {
-    toggle.setAttribute("aria-expanded", String(open));
-    menu.hidden = !open;
-  };
-
-  toggle.addEventListener("click", () => setOpen(menu.hidden));
-  document.addEventListener("click", (event) => {
-    if (!moreNavigation.contains(event.target) || event.target.closest(".more-menu a")) {
-      setOpen(false);
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !menu.hidden) {
-      setOpen(false);
-      toggle.focus();
-    }
-  });
-  moreNavigation.addEventListener("focusout", (event) => {
-    if (!moreNavigation.contains(event.relatedTarget)) setOpen(false);
-  });
+function closeMore() {
+  document.querySelector('.more-toggle')?.setAttribute('aria-expanded', 'false');
+  const menu = document.querySelector('.more-menu');
+  if (menu) menu.hidden = true;
 }
+document.addEventListener('click', event => {
+  const navigation = document.querySelector('.more-navigation');
+  if (!navigation) return;
+  if (event.target.closest('.more-toggle')) {
+    const menu = navigation.querySelector('.more-menu');
+    menu.hidden = !menu.hidden;
+    navigation.querySelector('.more-toggle').setAttribute('aria-expanded', String(!menu.hidden));
+  } else if (!navigation.contains(event.target) || event.target.closest('.more-menu a')) closeMore();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && document.querySelector('.more-menu:not([hidden])')) {
+    closeMore();
+    document.querySelector('.more-toggle').focus();
+  }
+});
+document.addEventListener('focusout', event => {
+  const navigation = event.target.closest('.more-navigation');
+  if (navigation && !navigation.contains(event.relatedTarget)) closeMore();
+});
+})();

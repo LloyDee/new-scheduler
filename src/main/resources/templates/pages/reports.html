@@ -73,7 +73,7 @@
              th:href="@{${base + '/reports.csv'}(type=${category},snapshot=${backupToken})}"
              th:text="${'Download ' + category + ' CSV'}"></a>
         </div>
-        <form method="post" th:action="@{${base + '/backups/refresh'}}">
+        <form th:if="${canManage}" method="post" th:action="@{${base + '/backups/refresh'}}">
           <p>To include changes made since this snapshot, capture a new backup and download all three files again.</p>
           <button class="secondary">Capture new backup</button>
         </form>
@@ -171,7 +171,7 @@
           </tbody>
         </table>
       </div>
-      <details class="card no-print">
+      <details th:if="${canManage}" class="card no-print">
         <summary>Restore event from CSV backup</summary>
         <p>Upload the three files from the same backup snapshot. This replaces all departments, volunteers, shifts, and assignments in the opened event. The event details stay unchanged.</p>
         <p>Upload the original backup CSV files, up to 10 MB each. Ordinary report CSVs cannot be restored.</p>
