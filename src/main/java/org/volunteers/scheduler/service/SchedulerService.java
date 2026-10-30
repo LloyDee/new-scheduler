@@ -113,7 +113,9 @@ public class SchedulerService {
             departmentRoles.put(selected, role);
         }
         boolean noDepartment = "none".equals(input.get("departmentChoice"));
-        require(!departmentRoles.isEmpty() || noDepartment, "Choose a department and its role, or No Department Yet.");
+        require(id == null || !noDepartment, "Choose a department and its role.");
+        require(!departmentRoles.isEmpty() || noDepartment,
+                id == null ? "Choose a department and its role, or No Department Yet." : "Choose a department and its role.");
         require(!noDepartment || departmentRoles.isEmpty(), "No Department Yet cannot be combined with department roles.");
         List<Volunteer> existing = volunteers.findByEventIdOrderByNameAscIdAsc(eventId);
         for (var membership : departmentRoles.entrySet()) {

@@ -138,18 +138,40 @@ class BackupIntegrationTest {
     @Test void reportOffersBackupsAndDownloadsOneSnapshotIgnoringFilters() throws Exception {
         var session = new MockHttpSession();
         String base = "/events/" + event.getId();
-        mvc.perform(get(base + "/reports").param("type", "volunteers").session(session))
+        mvc.perform(get(base + "/reports").param("type", "backup").session(session))
             .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Restore event from CSV backup")))
-            .andExpect(model().attribute("backupCount", 2));
+            .andExpect(model().attribute("backupCounts", Map.of("volunteers", 2, "shifts", 3, "departments", 2)))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Volunteers: 2 · Schedule/shifts: 3 · Departments: 2")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(">Download CSV</a>"))));
         var captured = (BackupService.Backup) session.getAttribute("csvBackup");
         for (String type : List.of("volunteers", "departments", "shifts")) {
+            mvc.perform(get(base + "/reports").param("type", type).session(session))
+                .andExpect(status().isOk()).andExpect(model().attribute("reportType", "backup"));
             mvc.perform(get(base + "/reports.csv").param("type", type).param("departmentId", "999999")
                 .param("date", "2000-01-01").param("snapshot", captured.token()).session(session))
                 .andExpect(status().isOk()).andExpect(content().bytes(captured.files().get(type)));
         }
         mvc.perform(post(base + "/backups/refresh").session(session)).andExpect(status().isForbidden());
-        mvc.perform(post(base + "/backups/refresh").with(csrf()).session(session)).andExpect(status().is3xxRedirection());
+        scheduler.saveDepartment(event.getId(), null, Map.of("name", "New department"));
+        mvc.perform(post(base + "/backups/refresh").with(csrf()).session(session))
+            .andExpect(redirectedUrl(base + "/reports?type=backup"));
         assertThat(((BackupService.Backup) session.getAttribute("csvBackup")).token()).isNotEqualTo(captured.token());
+        mvc.perform(get(base + "/reports").param("type", "backup").session(session))
+            .andExpect(model().attribute("backupCounts", Map.of("volunteers", 2, "shifts", 3, "departments", 3)));
+    }
+
+    @Test void reportsOfferAutomaticFiltersAndEmptyBackupCounts() throws Exception {
+        String base = "/events/" + event.getId();
+        String html = mvc.perform(get(base + "/reports")).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("name=\"type\" data-auto-submit", "name=\"departmentId\" data-auto-submit", ">Backup Data</option>")
+            .doesNotContain("(backup)</option>", ">Apply</button", ">Clear</a>");
+        var empty = scheduler.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", "2026-10-29", "venue", "Empty"));
+        try {
+            mvc.perform(get("/events/" + empty.getId() + "/reports").param("type", "backup"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Volunteers: 0 · Schedule/shifts: 0 · Departments: 0")));
+        } finally { scheduler.deleteEvent(empty.getId()); }
     }
 
     @Test void restoreRequiresConfirmationAndCsrfAndAcceptsValidUpload() throws Exception {
@@ -166,13 +188,13 @@ class BackupIntegrationTest {
         assertThat(scheduler.snapshot(event.getId()).assignments()).hasSize(2);
     }
     @Test void noDepartmentBackupsRoundTripAndFirstAssignmentPersistsMembership() {
-        scheduler.saveVolunteer(event.getId(), volunteer.getId(), Map.of("name", "Alex", "phone", "8135160335",
-            "email", "alex@example.com", "congregation", "North", "privilege", "ELDER", "departmentChoice", "none"));
-        assertThat(scheduler.volunteer(event.getId(), volunteer.getId()).getDepartmentRoles()).isEmpty();
+        Volunteer unassigned = scheduler.saveVolunteer(event.getId(), null, Map.of("name", "Pending", "phone", "8135160335",
+            "email", "pending@example.com", "congregation", "North", "privilege", "ELDER", "departmentChoice", "none"));
+        assertThat(unassigned.getDepartmentRoles()).isEmpty();
         var backup = backups.capture(event.getId());
         backups.restore(event.getId(), backup.files());
         var restored = scheduler.snapshot(event.getId());
-        Volunteer pending = restored.volunteers().stream().filter(v -> v.getEmail().equals("alex@example.com")).findFirst().orElseThrow();
+        Volunteer pending = restored.volunteers().stream().filter(v -> v.getEmail().equals("pending@example.com")).findFirst().orElseThrow();
         assertThat(pending.getDepartmentRoles()).isEmpty();
         assertThat(restored.assignments()).hasSize(2);
         Shift available = restored.shifts().stream().filter(s -> s.getName().equals("Unassigned")).findFirst().orElseThrow();

@@ -165,6 +165,25 @@ small {
     flex-shrink: 0
 }
 
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.app-version {
+    font-size: .75rem;
+    font-weight: 400;
+    letter-spacing: normal;
+}
+
+.brand .app-version {
+    font-size: .75rem;
+    font-weight: 400;
+    letter-spacing: normal;
+    color: rgb(255 255 255 / 75%);
+}
+
 .event-switch {
     display: flex;
     align-items: center;

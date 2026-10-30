@@ -117,10 +117,17 @@ class SchedulerIntegrationTest {
                 base + "/departments", base + "/departments?edit=" + department.getId(), base + "/departments?view=" + department.getId(),
                 base + "/schedule", base + "/schedule?edit=" + shift.getId(),
                 base + "/reports", base + "/reports?type=volunteer", base + "/reports?type=coverage")) {
-            mvc.perform(get(path)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Scheduler Application")));
+            mvc.perform(get(path)).andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("Scheduler Application")))
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("<small class=\"app-version\">\u00a9 2027 v.1.67.2</small>")));
         }
         mvc.perform(get(base + "/schedule")).andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Alex Rivera")));
+    }
+
+    @Test void aboutShowsApplicationNameAndVersion() throws Exception {
+        mvc.perform(get("/settings")).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<h3>Scheduler Application</h3>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<small class=\"app-version muted\">\u00a9 2027 v.1.67.2</small>")));
     }
 
     @Test void eventsAreIsolatedForReadsWritesAssignmentsAndFilters() throws Exception {
@@ -531,13 +538,38 @@ class SchedulerIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
-    @Test void volunteersCanExplicitlyChooseNoDepartmentAndSeeItOnCardsAndEditForm() throws Exception {
+    @Test void noDepartmentOptionIsOnlyAvailableWhenCreatingVolunteers() throws Exception {
         Volunteer unassigned = service.saveVolunteer(event.getId(), null, noDepartmentInput());
         assertThat(unassigned.getDepartmentRoles()).isEmpty();
         mvc.perform(get("/events/" + event.getId() + "/volunteers").param("edit", unassigned.getId().toString()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"none\" selected=\"selected\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"none\""))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("No Department Yet")));
+        mvc.perform(get("/events/" + event.getId() + "/volunteers").param("edit", volunteer.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"none\""))));
+        mvc.perform(get("/events/" + event.getId() + "/volunteers").param("create", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"none\"")));
+        assertThatThrownBy(() -> service.saveVolunteer(event.getId(), unassigned.getId(), noDepartmentInput()))
+                .hasMessageContaining("Choose a department and its role.");
+        var missingDepartment = noDepartmentInput();
+        missingDepartment.remove("departmentChoice");
+        assertThatThrownBy(() -> service.saveVolunteer(event.getId(), unassigned.getId(), missingDepartment))
+                .hasMessageContaining("Choose a department and its role.");
+        assertThat(unassigned.getDepartmentRoles()).isEmpty();
+        var rejectedEdit = mvc.perform(post("/events/" + event.getId() + "/volunteers/save").with(csrf())
+                .param("id", unassigned.getId().toString())
+                .param("name", "Alex").param("phone", "202-555-0100")
+                .param("email", "alex@example.com").param("congregation", "North")
+                .param("privilege", "PUBLISHER").param("departmentChoice", "none"))
+                .andExpect(flash().attributeExists("error", "draft")).andReturn();
+        mvc.perform(get("/events/" + event.getId() + "/volunteers")
+                .param("edit", unassigned.getId().toString()).flashAttrs(rejectedEdit.getFlashMap()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"none\""))));
+        service.saveVolunteer(event.getId(), unassigned.getId(), volunteerInput());
+        assertThat(unassigned.getDepartmentRoles()).containsKey(department);
         var input = noDepartmentInput();
         input.remove("departmentChoice");
         assertThatThrownBy(() -> service.saveVolunteer(event.getId(), null, input)).isInstanceOf(IllegalArgumentException.class);
@@ -579,14 +611,15 @@ class SchedulerIntegrationTest {
         assertThat(service.snapshot(event.getId()).availableVolunteers(shift)).contains(unassigned);
     }
 
-    @Test void clearingDepartmentsPreservesAssignmentsAndFailedAssignmentDoesNotSetDepartment() {
+    @Test void rejectingDepartmentRemovalPreservesMembershipAndAssignments() {
         service.assign(event.getId(), shift.getId(), volunteer.getId(), false);
-        service.saveVolunteer(event.getId(), volunteer.getId(), noDepartmentInput());
-        assertThat(volunteer.getDepartmentRoles()).isEmpty();
+        assertThatThrownBy(() -> service.saveVolunteer(event.getId(), volunteer.getId(), noDepartmentInput()))
+                .hasMessageContaining("Choose a department and its role.");
+        assertThat(volunteer.getDepartmentRoles()).containsKey(department);
         assertThat(service.snapshot(event.getId()).assignments()).hasSize(1);
         assertThatThrownBy(() -> service.assign(event.getId(), shift.getId(), volunteer.getId(), false))
                 .hasMessageContaining("already assigned");
-        assertThat(volunteer.getDepartmentRoles()).isEmpty();
+        assertThat(volunteer.getDepartmentRoles()).containsKey(department);
         Department parking = service.saveDepartment(event.getId(), null, Map.of("name", "Parking"));
         var input = shiftInput("09:30", "10:30");
         input.put("departmentId", parking.getId().toString());
@@ -594,9 +627,9 @@ class SchedulerIntegrationTest {
         assertThat(service.snapshot(event.getId()).availableVolunteers(overlap)).doesNotContain(volunteer);
         assertThatThrownBy(() -> service.assign(event.getId(), overlap.getId(), volunteer.getId(), false))
                 .isInstanceOf(SchedulerService.OverlapException.class);
-        assertThat(volunteer.getDepartmentRoles()).isEmpty();
+        assertThat(volunteer.getDepartmentRoles()).containsKey(department);
         service.assign(event.getId(), overlap.getId(), volunteer.getId(), true);
-        assertThat(volunteer.getDepartmentRoles()).containsEntry(parking, Volunteer.Role.VOLUNTEER).hasSize(1);
+        assertThat(volunteer.getDepartmentRoles()).containsKey(department).doesNotContainKey(parking);
         assertThat(service.snapshot(event.getId()).assignments()).hasSize(2);
     }
 

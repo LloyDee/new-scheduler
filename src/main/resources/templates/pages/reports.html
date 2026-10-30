@@ -18,6 +18,7 @@
           <button th:unless="${backup}" class="secondary" type="button" data-print>
             Print report</button
           ><a
+            th:unless="${backup}"
             class="button"
             th:href="@{${base + '/reports.csv'}(type=${reportType},departmentId=${departmentId},date=${date},snapshot=${backupToken})}"
             >Download CSV</a
@@ -31,7 +32,7 @@
       >
         <label class="grow"
           >Report
-          <select name="type">
+          <select name="type" data-auto-submit>
             <option
               value="department"
               th:selected="${reportType == 'department'}"
@@ -47,13 +48,11 @@
             <option value="coverage" th:selected="${reportType == 'coverage'}">
               Staffing coverage
             </option>
-            <option value="volunteers" th:selected="${reportType == 'volunteers'}">All volunteer information (backup)</option>
-            <option value="shifts" th:selected="${reportType == 'shifts'}">All schedule/shift information (backup)</option>
-            <option value="departments" th:selected="${reportType == 'departments'}">All department information (backup)</option>
+            <option value="backup" th:selected="${reportType == 'backup'}">Backup Data</option>
           </select></label
         ><label class="grow" th:unless="${backup}"
           >Department
-          <select name="departmentId">
+          <select name="departmentId" data-auto-submit>
             <option value="">All departments</option>
             <option
               th:each="d : ${departments}"
@@ -61,12 +60,11 @@
               th:text="${d.name}"
               th:selected="${departmentId == d.id}"
             ></option></select></label
-        ><button class="secondary">Apply</button
-        ><a th:href="${base + '/reports'}">Clear</a>
+        >
       </form>
       <div th:if="${backup}" class="card">
-        <h2 th:text="${reportType == 'volunteers' ? 'All volunteer information' : (reportType == 'shifts' ? 'All schedule/shift information' : 'All department information')}"></h2>
-        <p th:text="${backupCount + ' records in this backup.'}"></p>
+        <h2>Backup Data</h2>
+        <p th:text="${'Volunteers: ' + backupCounts['volunteers'] + ' · Schedule/shifts: ' + backupCounts['shifts'] + ' · Departments: ' + backupCounts['departments']}"></p>
         <p>This backup includes all data for the opened event. Volunteer files include department roles; shift files include volunteer assignments.</p>
         <p>Download all three files below. They share one snapshot and must be restored together. Keep the original files without editing them in a spreadsheet.</p>
         <p>Backup set: <code th:text="${backupToken}"></code></p>

@@ -28,6 +28,7 @@ public class WebController {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     String invalidRequest(Model model) {
+        model.addAttribute("appVersion", new org.volunteers.scheduler.version.Version());
         model.addAttribute("status", 400); return "error";
     }
 
@@ -120,7 +121,6 @@ public class WebController {
                     "congregation", v.getCongregation(), "notes", v.getNotes()));
             defaults.put("privilege", v.getPrivilege() == null ? "" : v.getPrivilege().name());
             v.getDepartmentRoles().forEach((department, role) -> defaults.put("departmentRole_" + department.getId(), role.name()));
-            if (v.getDepartmentRoles().isEmpty()) defaults.put("departmentChoice", "none");
         }
         Map<Long, Volunteer> dialogVolunteers = new LinkedHashMap<>();
         @SuppressWarnings("unchecked")
@@ -292,15 +292,16 @@ public class WebController {
                    @RequestParam(required = false) Long departmentId, @RequestParam(required = false) LocalDate date,
                    Model model, HttpSession session) {
         var data = prepare(eventId, model, session);
-        model.addAttribute("backup", BackupService.supports(type));
-        if (BackupService.supports(type)) {
+        boolean backupView = "backup".equals(type) || BackupService.supports(type);
+        model.addAttribute("backup", backupView);
+        if (backupView) {
             var backup = backup(eventId, session);
-            model.addAttribute("backupCount", backup.counts().get(type));
+            model.addAttribute("backupCounts", backup.counts());
             model.addAttribute("backupToken", backup.token());
             departmentId = null; date = null;
         }
         var rows = filter(data, departmentId, date, model);
-        model.addAttribute("reportType", reportType(type));
+        model.addAttribute("reportType", backupView ? "backup" : reportType(type));
         model.addAttribute("volunteerRows", volunteerReport(data, rows, departmentId != null || date != null));
         return "pages/reports";
     }
@@ -353,7 +354,7 @@ public class WebController {
     String refreshBackup(@PathVariable long eventId, HttpSession session, RedirectAttributes flash) {
         synchronized (session) { session.setAttribute("csvBackup", backups.capture(eventId)); }
         flash.addFlashAttribute("notice", "New backup captured. Download all three CSV files from this snapshot.");
-        return "redirect:/events/" + eventId + "/reports?type=volunteers";
+        return "redirect:/events/" + eventId + "/reports?type=backup";
     }
 
     @PostMapping("/events/{eventId}/backups/restore")
@@ -382,7 +383,7 @@ public class WebController {
         } catch (org.springframework.dao.DataAccessException ex) {
             flash.addFlashAttribute("error", "Restore failed because the data could not be saved. Existing data was kept.");
         }
-        return "redirect:/events/" + eventId + "/reports?type=volunteers";
+        return "redirect:/events/" + eventId + "/reports?type=backup";
     }
 
     private SchedulerService.Snapshot prepare(long eventId, Model model, HttpSession session) {
@@ -446,7 +447,7 @@ class BackupUploadErrors {
         flash.addFlashAttribute("error", "Restore failed. Backup files exceed the upload size limit. Existing data was kept.");
         String path = request.getRequestURI().substring(request.getContextPath().length());
         if (path.matches("/events/[0-9]+/backups/restore"))
-            return "redirect:" + path.replace("/backups/restore", "/reports?type=volunteers");
+            return "redirect:" + path.replace("/backups/restore", "/reports?type=backup");
         return "redirect:/";
     }
 }

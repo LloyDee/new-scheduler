@@ -92,8 +92,9 @@
     <dialog id="about-dialog" class="app-dialog" aria-labelledby="about-title">
         <div class="app-dialog-content">
             <h2 id="about-title">About</h2>
-            <img class="app-about-logo" th:src="@{/images/logo.gif}" alt="Volunteer Scheduler logo" />
-            <h3>Volunteer Scheduler</h3>
+            <img class="app-about-logo" th:src="@{/images/logo.gif}" alt="Scheduler Application logo" />
+            <h3 th:text="${appVersion.versionName}">Scheduler Application</h3>
+            <small class="app-version muted" th:text="${appVersion.copyright}"></small>
             <hr />
             <p><strong>Lloyd Jayson Pintac</strong><br />Software Developer</p>
             <hr />

@@ -44,7 +44,7 @@ The terminal `bootRun` command above does not automatically compile source chang
 - Bottom navigation: Home, Volunteers, Schedule, Departments, and More.
 - Independent data for every event; event switching under More → Events.
 - Volunteer contacts, congregation, notes, search, and personal assignments.
-- Choose **No Department Yet** when adding or editing a volunteer to skip department roles. These volunteers are available across departments until their first successful shift assignment saves that department with the **Volunteer** role. Clearing department roles preserves existing shift assignments.
+- Choose **No Department Yet** when adding a volunteer to skip department roles. These volunteers are available across departments until their first successful shift assignment saves that department with the **Volunteer** role. Editing a volunteer requires a department and role.
 - Department shifts with event-date validation, required headcount, and coverage status.
 - Explicit confirmation for overlapping assignments, including conflicts caused by shift edits. Adjacent shifts are allowed. Duplicate assignments are rejected. Overstaffing is allowed.
 - Date and department filters, printable reports, and CSV downloads for department schedules, volunteer assignments, and staffing coverage.

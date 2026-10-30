@@ -261,10 +261,11 @@
                 </select></label>
                 <fieldset class="form-stack" data-department-picker>
                     <legend>Departments and roles</legend>
-                    <p class="muted">Select a department and role, or choose No Department Yet. Volunteers without a department join their first assigned shift's department as a Volunteer.</p>
+                    <p class="muted" th:if="${editId == null}">Select a department and role, or choose No Department Yet. Volunteers without a department join their first assigned shift's department as a Volunteer.</p>
+                    <p class="muted" th:if="${editId != null}">Select a department and role.</p>
                     <p class="muted" th:if="${departments.isEmpty()}">
                         <a th:href="${base + '/departments?create=true#editor'}">Add a department</a> to select
-                        departments and roles, or select No Department Yet below.
+                        departments and roles<span th:if="${editId == null}">, or select No Department Yet below</span>.
                     </p>
 
                     <div class="form-stack" th:each="department : ${departments}"
@@ -287,7 +288,7 @@
                     <label>Department
                         <select name="departmentChoice" data-department-select required>
                             <option value="">Choose a department</option>
-                            <option value="none" th:selected="${draft['departmentChoice'] == 'none'}">No Department Yet</option>
+                            <option th:if="${editId == null}" value="none" th:selected="${draft['departmentChoice'] == 'none'}">No Department Yet</option>
                             <option th:each="department : ${departments}"
                                     th:value="${department.id}" th:text="${department.name}"></option>
                         </select>
