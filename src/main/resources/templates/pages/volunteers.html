@@ -124,9 +124,13 @@
         <div class="stack">
             <form
                     class="filter-bar"
+                    data-volunteer-search
                     method="get"
                     th:action="@{${base + '/volunteers'}}"
             >
+                <label class="grow">Search volunteers
+                    <input type="search" name="q" th:value="${q}" placeholder="Name, congregation, phone or email" autocomplete="off"/>
+                </label>
                 <label><span class="sr-only">Filter by department</span>
                     <select name="departmentId" aria-label="Filter by department" data-auto-submit>
                         <option value="">All departments</option>
@@ -135,6 +139,8 @@
                     </select>
                 </label>
             </form>
+            <p data-search-status role="status" aria-live="polite"></p>
+            <div class="stack" data-volunteer-results>
             <div class="card" id="volunteer-assignments" th:if="${assignmentVolunteer != null}">
                 <div class="section-heading">
                     <h2 th:text="${assignmentVolunteer.name + '’s assignments'}"></h2>
@@ -150,7 +156,7 @@
             ></p>
             <div class="card empty" th:if="${filteredVolunteers.isEmpty()}">
                 <h2>No volunteers to show</h2>
-                <p>Add your first volunteer or adjust your department filter.</p>
+                <p>Add your first volunteer or adjust your search or department filter.</p>
             </div>
             <article class="card volunteer-card" th:each="v : ${filteredVolunteers}">
                 <a class="volunteer-card-main"
@@ -198,6 +204,7 @@
                 </div>
             </article>
             <nav th:replace="~{shared/fragments :: pagination(${listPage}, @{${base + '/volunteers'}(page=${listPage.number - 1},departmentId=${departmentId},q=${q})}, @{${base + '/volunteers'}(page=${listPage.number + 1},departmentId=${departmentId},q=${q})})}"></nav>
+            </div>
         </div>
         <aside th:replace="~{shared/volunteer-editor :: editor}"></aside>
     </div>

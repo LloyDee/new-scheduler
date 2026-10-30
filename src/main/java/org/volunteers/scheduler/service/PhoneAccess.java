@@ -85,6 +85,10 @@ public class PhoneAccess {
         return permissions(session).stream().filter(row -> row.getEventId().equals(eventId))
             .map(Volunteers.AccessRow::getDepartmentId).filter(Objects::nonNull).min(Long::compareTo).orElse(null);
     }
+    public Long ownVolunteerId(HttpSession session, long eventId) {
+        return permissions(session).stream().filter(row -> row.getEventId().equals(eventId))
+            .map(Volunteers.AccessRow::getVolunteerId).min(Long::compareTo).orElse(null);
+    }
     public String displayName(HttpSession session) {
         Long active = session == null ? null : (Long) session.getAttribute("activeEvent");
         return permissions(session).stream().sorted(Comparator

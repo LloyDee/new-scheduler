@@ -12,7 +12,7 @@
 <!--          <p class="muted" th:text="${event != null and event.type.name() == 'CIRCUIT_ASSEMBLY' ? event.assembly : ''}"></p>-->
         </div>
       </div>
-      <article class="card weather-card" aria-label="San Antonio weather" data-weather>
+      <article class="card weather-card" aria-label="Current location weather" data-weather>
         <div class="weather-summary">
           <div class="weather-current">
             <span class="weather-icon" data-weather-icon aria-hidden="true">☀</span>
@@ -22,7 +22,7 @@
             </div>
           </div>
           <div class="weather-location">
-            <strong>San Antonio, TX</strong>
+            <strong>Current location</strong>
             <p data-weather-status role="status">Loading weather…</p>
           </div>
         </div>

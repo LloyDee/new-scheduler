@@ -49,7 +49,24 @@ class PhoneLoginIntegrationTest {
         service.saveVolunteer(event.getId(), volunteer.getId(), input);
         mvc.perform(get("/events").session(session())).andExpect(status().isOk())
             .andExpect(model().attribute("currentUserFirstName", "Lloyd"))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>Hi Lloyd -</span><button class=\"text-button\">Logout</button>")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>Hi Lloyd</span>")));
+    }
+    @Test void greetingLinksToOwnEventCardEvenWhenSearchAndDepartmentHideIt() throws Exception {
+        var otherDepartment = service.saveDepartment(event.getId(), null, Map.of("name", "Parking"));
+        mvc.perform(get(base() + "/volunteers").session(session()).param("q", "no-match")
+                .param("departmentId", otherDepartment.getId().toString()).param("page", "5"))
+            .andExpect(status().isOk()).andExpect(model().attribute("currentVolunteerId", volunteer.getId()))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("view=" + volunteer.getId())))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("data-own-volunteer-link")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("data-volunteer-search")));
+        mvc.perform(get(base() + "/volunteers").session(session()).param("view", volunteer.getId().toString())
+                .param("q", "no-match").param("departmentId", otherDepartment.getId().toString()))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("data-open-on-load=\"true\"")));
+        var other = service.saveEvent(null, Map.of("type", "REGIONAL_CONVENTION", "startDate", "2027-07-02"));
+        mvc.perform(get("/events/" + other.getId() + "/volunteers").session(session()))
+            .andExpect(status().isOk()).andExpect(model().attributeDoesNotExist("currentVolunteerId"))
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("data-own-volunteer-link"))));
     }
     @Test void existingPhoneRecordsAreBackfilledAndEditsUpdateLookup() {
         jdbc.update("update volunteer set normalized_phone = null where id = ?", volunteer.getId());
@@ -61,6 +78,28 @@ class PhoneLoginIntegrationTest {
         service.saveVolunteer(event.getId(), volunteer.getId(), edited);
         assertThat(access.matching("2105550100")).isEmpty();
         assertThat(access.matching("2105550102")).extracting(Volunteer::getId).contains(volunteer.getId());
+    }
+    @Test void searchFindsVolunteersBeyondFirstPageAcrossAllSearchFields() throws Exception {
+        for (int i = 0; i < 26; i++) {
+            var input = profile("21055502" + String.format("%02d", i));
+            input.put("name", "Before " + i);
+            input.put("departmentChoice", "none");
+            service.saveVolunteer(event.getId(), null, input);
+        }
+        var target = profile("2105550999");
+        target.put("name", "Zulu Person");
+        target.put("departmentChoice", "none");
+        target.put("congregation", "Unique Congregation");
+        target.put("email", "unique@example.com");
+        var record = service.saveVolunteer(event.getId(), null, target);
+        assertThat(service.volunteerPage(event.getId(), null, "", 0, List.of()).page().getContent())
+            .extracting(Volunteer::getId).doesNotContain(record.getId());
+        for (String query : List.of("zULu", "Unique Congregation", "555-0999", "unique@example.com")) {
+            mvc.perform(get(base() + "/volunteers").session(session()).param("departmentId", "").param("q", query))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("1 volunteers")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Zulu Person")));
+        }
     }
     @Test void anonymousMustLoginAndPublicFormsRender() throws Exception {
         mvc.perform(get("/events")).andExpect(redirectedUrl("/login"));

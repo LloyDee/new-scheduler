@@ -184,6 +184,7 @@ public class WebController {
         if (view != null) dialogVolunteers.put(view, snapshotVolunteer(data, view));
         model.addAttribute("dialogVolunteers", dialogVolunteers.values());
         model.addAttribute("openVolunteerId", view);
+        model.addAttribute("currentVolunteerId", access.ownVolunteerId(session, eventId));
         Map<Long, List<SchedulerService.ShiftRow>> volunteerAssignments = new HashMap<>();
         var rows = data.rows();
         dialogVolunteers.keySet().forEach(id -> volunteerAssignments.put(id, rows.stream()

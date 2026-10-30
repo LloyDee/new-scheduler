@@ -97,7 +97,15 @@
       <form method="dialog" class="notification-footer"><button autofocus>Close</button></form>
     </dialog>
     <main id="main" class="container" th:classappend="${session.loginPhone != null ? 'signed-in-container' : ''}" tabindex="-1" th:attr="data-page-title=${title + ' · App'}">
-      <form th:if="${session.loginPhone != null}" method="post" th:action="@{/logout}" class="card-actions user-greeting"><span th:if="${currentUserFirstName != null}" th:text="${'Hi ' + currentUserFirstName + ' -'}"></span><button class="text-button">Logout</button><span th:if="${isAppOwner}" class="badge">App Owner</span></form>
+      <form th:if="${session.loginPhone != null}" method="post" th:action="@{/logout}" class="card-actions user-greeting">
+        <a th:if="${currentUserFirstName != null and tab == 'volunteers' and currentVolunteerId != null}"
+           th:href="@{${base + '/volunteers'}(view=${currentVolunteerId},departmentId=${departmentId},q=${q})}"
+           th:attr="data-volunteer-dialog=${'volunteer-dialog-' + currentVolunteerId}"
+           data-own-volunteer-link
+           aria-haspopup="dialog" th:text="${'Hi ' + currentUserFirstName}"></a>
+        <span th:if="${currentUserFirstName != null and (tab != 'volunteers' or currentVolunteerId == null)}" th:text="${'Hi ' + currentUserFirstName}"></span>
+        <button class="text-button">Logout</button><span th:if="${isAppOwner}" class="badge">App Owner</span>
+      </form>
       <div
         th:if="${notice != null}"
         class="alert success"

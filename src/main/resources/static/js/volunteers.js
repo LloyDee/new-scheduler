@@ -11,6 +11,8 @@ function initializeVolunteers() {
     return true;
   };
   triggers.forEach(trigger => {
+    if (trigger.dataset.dialogBound) return;
+    trigger.dataset.dialogBound = 'true';
     trigger.addEventListener('click', event => {
       if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
       const dialog = document.getElementById(trigger.dataset.volunteerDialog);
@@ -20,6 +22,67 @@ function initializeVolunteers() {
   const selected = document.querySelector('.volunteer-dialog[data-open-on-load="true"]');
   if (selected) openDialog(selected, triggers.find(trigger => trigger.dataset.volunteerDialog === selected.id));
 }
+function initializeSearch() {
+  const form = document.querySelector('[data-volunteer-search]');
+  if (!form) return;
+  const input = form.elements.q;
+  const status = document.querySelector('[data-search-status]');
+  let timer, controller;
+  let sequence = 0;
+  let disposed = false;
+  const invalidate = () => {
+    clearTimeout(timer);
+    controller?.abort();
+    sequence++;
+    document.querySelector('[data-volunteer-results]')?.removeAttribute('aria-busy');
+  };
+  async function search() {
+    invalidate();
+    const current = sequence;
+    controller = new AbortController();
+    const url = new URL(form.action, location.href);
+    url.search = new URLSearchParams(new FormData(form)).toString();
+    const results = document.querySelector('[data-volunteer-results]');
+    results.setAttribute('aria-busy', 'true');
+    status.textContent = 'Searching…';
+    try {
+      const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store',
+        headers: { 'X-Scheduler-Section': 'main' },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) });
+      if (disposed || current !== sequence) return;
+      if (response.redirected) { location.assign(response.url); return; }
+      if (!response.ok) throw new Error('Search failed');
+      const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+      if (disposed || current !== sequence) return;
+      const nextResults = page.querySelector('[data-volunteer-results]');
+      if (!nextResults) throw new Error('Search failed');
+      document.querySelectorAll('.volunteer-dialog').forEach(dialog => dialog.remove());
+      page.querySelectorAll('.volunteer-dialog').forEach(dialog => form.before(dialog));
+      results.replaceWith(nextResults);
+      const greeting = document.querySelector('[data-own-volunteer-link]');
+      const nextGreeting = page.querySelector('[data-own-volunteer-link]');
+      if (greeting && nextGreeting) greeting.href = nextGreeting.href;
+      history.replaceState({ ...history.state, scheduler: true }, '', url);
+      status.textContent = nextResults.querySelector('.list-count').textContent;
+      initializeVolunteers();
+    } catch (error) {
+      if (!disposed && current === sequence) status.textContent = 'Search failed. Type again or press Enter to retry.';
+    } finally {
+      if (!disposed && current === sequence) results.removeAttribute('aria-busy');
+    }
+  }
+  input.addEventListener('input', () => {
+    invalidate();
+    status.textContent = 'Searching…';
+    if (!input.composing) timer = setTimeout(search, 250);
+  });
+  input.addEventListener('compositionstart', () => { input.composing = true; invalidate(); });
+  input.addEventListener('compositionend', () => { input.composing = false; timer = setTimeout(search, 250); });
+  form.addEventListener('submit', event => { event.preventDefault(); search(); });
+  document.addEventListener('scheduler:before-page', () => { disposed = true; invalidate(); }, { once: true });
+}
+document.addEventListener('scheduler:page', initializeSearch);
 document.addEventListener('scheduler:page', initializeVolunteers);
 initializeVolunteers();
+initializeSearch();
 })();
