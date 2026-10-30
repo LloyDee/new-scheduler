@@ -199,7 +199,7 @@ class SchedulerIntegrationTest {
         assertThat(service.shift(event.getId(), later.getId()).getStartTime()).isEqualTo(LocalTime.of(9, 30));
     }
 
-    @Test void assemblyShiftsUseEventDateAndRequireTenMinuteTimes() throws Exception {
+    @Test void assemblyShiftsUseEventDateAndRequireFifteenMinuteTimes() throws Exception {
         Event assembly = event("Assembly", "CIRCUIT_ASSEMBLY");
         Department assemblyDepartment = service.saveDepartment(assembly.getId(), null, Map.of("name", "Attendants"));
         var input = shiftInput("06:00", "17:30");
@@ -209,12 +209,12 @@ class SchedulerIntegrationTest {
         assertThat(created.getDate()).isEqualTo(assembly.getStartDate());
         input.put("date", "2031-01-01");
         assertThat(service.saveShift(assembly.getId(), created.getId(), input).getDate()).isEqualTo(assembly.getStartDate());
-        for (String invalid : List.of("05:50", "17:40", "06:05", "06:00:01", "")) {
+        for (String invalid : List.of("05:45", "17:45", "06:05", "06:10", "06:00:01", "06:00:00.001", "")) {
             input.put("startTime", invalid);
             assertThatThrownBy(() -> service.saveShift(assembly.getId(), null, input)).isInstanceOf(IllegalArgumentException.class);
         }
         input.put("startTime", "06:00");
-        for (String invalid : List.of("17:40", "17:25", "")) {
+        for (String invalid : List.of("17:45", "17:25", "17:20", "17:30:01", "17:15:00.001", "", "06:00")) {
             input.put("endTime", invalid);
             assertThatThrownBy(() -> service.saveShift(assembly.getId(), null, input)).isInstanceOf(IllegalArgumentException.class);
         }
@@ -222,8 +222,35 @@ class SchedulerIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String editor = html.substring(html.indexOf("id=\"editor\""));
         assertThat(editor).doesNotContain("name=\"date\"")
-                .contains("name=\"startTime\" required", "name=\"endTime\" required", "06:00 AM", "05:30 PM")
+                .contains("name=\"startTime\" required", "name=\"endTime\" required", "06:00 AM", "06:15 AM", "06:45 AM", "05:30 PM")
                 .doesNotContain("05:40 PM", "06:05 AM");
+    }
+
+    @Test void assemblyShiftsAcceptEveryDropdownTimeForCreationAndEditing() throws Exception {
+        Event assembly = event("Assembly", "CIRCUIT_ASSEMBLY");
+        Department assemblyDepartment = service.saveDepartment(assembly.getId(), null, Map.of("name", "Attendants"));
+        var result = mvc.perform(get("/events/" + assembly.getId() + "/schedule?create=true"))
+                .andExpect(status().isOk()).andReturn();
+        @SuppressWarnings("unchecked")
+        List<LocalTime> times = (List<LocalTime>) result.getModelAndView().getModel().get("shiftTimes");
+        assertThat(times).hasSize(47).contains(LocalTime.of(6, 15), LocalTime.of(6, 45));
+        for (LocalTime time : times) {
+            var input = shiftInput(time.equals(LocalTime.of(17, 30)) ? "06:00" : time.toString(),
+                    time.equals(LocalTime.of(17, 30)) ? time.toString() : "17:30");
+            input.put("departmentId", assemblyDepartment.getId().toString());
+            Shift created = service.saveShift(assembly.getId(), null, input);
+            assertThat(created.getStartTime()).isEqualTo(LocalTime.parse(input.get("startTime")));
+            if (time.isAfter(LocalTime.of(6, 0))) {
+                input.put("startTime", "06:00");
+                input.put("endTime", time.toString());
+                Shift updated = service.saveShift(assembly.getId(), created.getId(), input);
+                assertThat(updated.getEndTime()).isEqualTo(time);
+            }
+        }
+        var reversed = shiftInput("06:45", "06:15");
+        reversed.put("departmentId", assemblyDepartment.getId().toString());
+        assertThatThrownBy(() -> service.saveShift(assembly.getId(), null, reversed))
+                .hasMessageContaining("End time must be after start time");
     }
 
     @Test void shiftNamesAreRequiredSavedAndEditable() throws Exception {

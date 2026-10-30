@@ -152,8 +152,8 @@ public class SchedulerService {
             for (LocalTime value : List.of(start, end)) {
                 require(!value.isBefore(LocalTime.of(6, 0)) && !value.isAfter(LocalTime.of(17, 30)),
                         "Shift times must be between 06:00 AM and 05:30 PM.");
-                require(value.getMinute() % 10 == 0 && value.getSecond() == 0 && value.getNano() == 0,
-                        "Shift times must use 10-minute increments.");
+                require(value.getMinute() % 15 == 0 && value.getSecond() == 0 && value.getNano() == 0,
+                        "Shift times must use 15-minute increments.");
             }
         }
         require(!date.isBefore(e.getStartDate()) && !date.isAfter(e.getEndDate()), "Shift date must be within the event dates.");
