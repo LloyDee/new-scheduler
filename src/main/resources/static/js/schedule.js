@@ -1,4 +1,5 @@
 (() => {
+function initializeSchedule() {
   document.querySelectorAll('[data-assignment-dialog]').forEach(trigger => {
     const dialog = document.getElementById(trigger.dataset.assignmentDialog);
     if (!dialog) return;
@@ -11,4 +12,7 @@
     dialog.querySelector('[data-assignment-cancel]').addEventListener('click', () => dialog.close());
     dialog.addEventListener('close', () => trigger.focus());
   });
+}
+document.addEventListener('scheduler:page', initializeSchedule);
+initializeSchedule();
 })();

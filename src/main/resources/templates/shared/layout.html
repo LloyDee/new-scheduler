@@ -3,8 +3,9 @@
   lang="en"
   xmlns:th="http://www.thymeleaf.org"
   th:fragment="page(title, tab, content)"
+  th:remove="${sectionRequest == true ? 'tag' : 'none'}"
 >
-  <head>
+  <head th:if="${sectionRequest != true}">
     <meta charset="UTF-8" />
     <meta name="_csrf" th:content="${_csrf.token}" />
     <meta name="_csrf_header" th:content="${_csrf.headerName}" />
@@ -19,12 +20,18 @@
     <script th:src="@{/js/theme.js}"></script>
     <link rel="stylesheet" th:href="@{/css/app.css}" />
     <script defer th:src="@{/js/app.js}"></script>
+    <script defer th:src="@{/js/volunteers.js}"></script>
+    <script defer th:src="@{/js/schedule.js}"></script>
+    <script defer th:src="@{/js/settings-app.js}"></script>
+    <script defer th:src="@{/js/weather.js}"></script>
+    <script defer th:src="@{/js/navigation.js}"></script>
     <script defer th:src="@{/js/notifications.js}"></script>
     <link rel="stylesheet" th:href="@{/css/notifications.css}" />
   </head>
-  <body>
+  <body th:remove="${sectionRequest == true ? 'tag' : 'none'}">
     <svg
       class="icon-library"
+      th:if="${sectionRequest != true}"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
@@ -66,8 +73,8 @@
       <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></symbol>
       <symbol id="notes" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
     </svg>
-    <a class="skip-link" href="#main">Skip to content</a>
-    <header class="app-header">
+    <a th:if="${sectionRequest != true}" class="skip-link" href="#main">Skip to content</a>
+    <header th:if="${sectionRequest != true}" class="app-header">
       <div class="header-inner">
         <a class="brand" th:href="@{/}"
           ><img class="brand-mark" th:src="@{/images/logo.gif}" alt="" />
@@ -80,7 +87,7 @@
         </button>
       </div>
     </header>
-    <dialog id="notification-dialog" class="notification-dialog" aria-labelledby="notification-title">
+    <dialog th:if="${sectionRequest != true}" id="notification-dialog" class="notification-dialog" aria-labelledby="notification-title">
       <div class="notification-content">
         <h2 id="notification-title">Notifications</h2>
         <p id="notification-status" role="status" aria-live="polite"></p>
@@ -89,7 +96,8 @@
       </div>
       <form method="dialog" class="notification-footer"><button autofocus>Close</button></form>
     </dialog>
-    <main id="main" class="container">
+    <main id="main" class="container" tabindex="-1" th:attr="data-page-title=${title + ' · App'}">
+      <form th:if="${session.loginPhone != null}" method="post" th:action="@{/logout}" class="card-actions"><span th:if="${currentUserFirstName != null}" th:text="${'Hi ' + currentUserFirstName + ' -'}"></span><button class="text-button">Logout</button></form>
       <div
         th:if="${notice != null}"
         class="alert success"

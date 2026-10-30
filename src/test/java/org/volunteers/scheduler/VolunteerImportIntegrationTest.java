@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:import-tests;DB_CLOSE_DELAY=-1", "spring.jpa.hibernate.ddl-auto=create-drop"})
 @AutoConfigureMockMvc
-class VolunteerImportIntegrationTest {
+class VolunteerImportIntegrationTest extends ManagerAccessFixture {
     @Autowired VolunteerImportService imports;
     @Autowired SchedulerService scheduler;
     @Autowired Volunteers volunteers;

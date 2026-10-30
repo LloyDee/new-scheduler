@@ -17,6 +17,9 @@ public class DeviceVisitService {
     }
     // Include commit in the monitor to serialize concurrent browser updates in this application.
     public synchronized void record(String id, Map<String, String> data) {
+        record(id, data, null);
+    }
+    public synchronized void record(String id, Map<String, String> data, String signedInName) {
         transactions.executeWithoutResult(status -> {
             DeviceVisit visit = visits.findById(id).orElseGet(() -> {
                 DeviceVisit created = new DeviceVisit();
@@ -24,6 +27,7 @@ public class DeviceVisitService {
                 created.firstSeen = Instant.now();
                 return created;
             });
+            if (signedInName != null && !signedInName.isBlank()) visit.name = signedInName;
             visit.browser = field(data, "browser");
             visit.operatingSystem = field(data, "operatingSystem");
             visit.deviceCategory = field(data, "deviceCategory");

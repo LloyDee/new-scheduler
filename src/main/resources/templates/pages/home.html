@@ -13,7 +13,6 @@
         </div>
       </div>
       <article class="card weather-card" aria-label="San Antonio weather" data-weather>
-        <script defer th:src="@{/js/weather.js}"></script>
         <div class="weather-summary">
           <div class="weather-current">
             <span class="weather-icon" data-weather-icon aria-hidden="true">☀</span>
@@ -60,7 +59,7 @@
       <div class="home-shifts" th:if="${event != null}">
         <div>
           <div class="section-heading">
-            <h2>Upcoming shifts</h2>
+            <h2>Your upcoming shifts</h2>
             <a th:href="${base + '/schedule'}">View schedule →</a>
           </div>
           <div th:replace="~{shared/fragments :: shifts(${upcoming}, false)}"></div>

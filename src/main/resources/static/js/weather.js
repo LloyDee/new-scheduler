@@ -1,9 +1,12 @@
+(() => {
+function initializeWeather() {
 const weatherCard = document.querySelector('[data-weather]');
 
 if (weatherCard) {
   const field = (name) => weatherCard.querySelector(`[data-weather-${name}]`);
   let loading = false;
   let loaded = false;
+  let activeController;
   const rounded = (value, suffix = '') => Number.isFinite(value) ? `${Math.round(value)}${suffix}` : '—';
   const conditions = (code, day) => {
     if (code === 0) return [day ? '☀' : '☾', day ? 'Clear sky' : 'Clear night'];
@@ -23,6 +26,7 @@ if (weatherCard) {
     loading = true;
     weatherCard.setAttribute('aria-busy', 'true');
     const controller = new AbortController();
+    activeController = controller;
     const timeout = setTimeout(() => controller.abort(), 12000);
     try {
       const params = new URLSearchParams({
@@ -63,5 +67,13 @@ if (weatherCard) {
   }
 
   loadWeather();
-  setInterval(loadWeather, 30 * 1000);
+  const timer = setInterval(loadWeather, 30 * 1000);
+  document.addEventListener('scheduler:before-page', () => {
+    clearInterval(timer);
+    activeController?.abort();
+  }, { once: true });
 }
+}
+document.addEventListener('scheduler:page', initializeWeather);
+initializeWeather();
+})();

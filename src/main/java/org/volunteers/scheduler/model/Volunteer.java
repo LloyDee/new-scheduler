@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Entity
+@Table(indexes = @Index(name = "idx_volunteer_normalized_phone", columnList = "normalized_phone"))
 public class Volunteer {
     public enum Role {
         ADMIN("Admin"), OVERSEER("Overseer"), ASSISTANT_OVERSEER("Assistant Overseer"), CAPTAIN("Captain"),KEY_MAN("Key Man"),VOLUNTEER("Volunteer");
@@ -22,6 +23,7 @@ public class Volunteer {
     @ManyToOne(optional = false) private Event event;
     @Column(nullable = false, length = 160) private String name;
     @Column(length = 60) private String phone;
+    @Column(name = "normalized_phone", length = 10) private String normalizedPhone;
     @Column(length = 254) private String email;
     @Column(length = 160) private String congregation;
     @Column(length = 2000) private String notes;
@@ -43,7 +45,11 @@ public class Volunteer {
     public String getNotes() { return notes; }
     public void setEvent(Event event) { this.event = event; }
     public void setName(String name) { this.name = name; }
-    public void setPhone(String phone) { this.phone = phone; }
+    public void setPhone(String phone) { this.phone = phone; normalizePhone(); }
+    @PrePersist @PreUpdate
+    private void normalizePhone() {
+        normalizedPhone = org.volunteers.scheduler.service.PhoneAccess.normalize(phone);
+    }
     public void setEmail(String email) { this.email = email; }
     public void setCongregation(String congregation) { this.congregation = congregation; }
     public void setNotes(String notes) { this.notes = notes; }

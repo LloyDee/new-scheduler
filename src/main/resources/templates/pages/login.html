@@ -1,0 +1,5 @@
+<!doctype html><html xmlns:th="http://www.thymeleaf.org" th:replace="~{shared/layout :: page('Log in', 'login', ~{::section})}"><body><section class="card editor">
+<h1>Log in</h1><p>Enter your phone number to find your events and shifts.</p>
+<form class="form-stack" method="post" th:action="@{/login}"><label>Phone number<input name="phone" type="tel" autocomplete="tel" required th:value="${phone}" placeholder="(210) 555-0123" /></label><button>Log in</button></form>
+<p>New volunteer? <a th:href="@{/signup}">Sign up</a></p>
+</section></body></html>

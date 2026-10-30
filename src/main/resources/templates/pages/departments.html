@@ -7,22 +7,13 @@
   <body>
     <section>
       <div class="page-heading">
-        <a class="button" th:href="${base + '/departments?create=true#editor'}"
+        <a th:if="${canManage}" class="button" th:href="${base + '/departments?create=true#editor'}"
           >+ Add department</a
           >
       </div>
       <div class="workspace" th:classappend="${!showEditor ? 'list-only' : ''}">
         <div class="stack">
-          <div class="card" th:if="${selectedDepartment != null}">
-            <div class="section-heading">
-              <h2 th:text="${selectedDepartment.name + ' schedule'}"></h2>
-              <a th:href="${base + '/departments'}">Close</a>
-            </div>
-            <div
-              th:replace="~{shared/fragments :: shifts(${departmentRows}, false)}"
-            ></div>
-          </div>
-          <p class="list-count" th:text="${departments.size() + ' departments'}"></p>
+          <p class="list-count" th:text="${listPage.totalElements + ' departments'}"></p>
           <div class="card empty" th:if="${departments.isEmpty()}">
             <h2>Create your Department here.</h2>
             <p>
@@ -45,22 +36,20 @@
             ></p>
             <div class="department-leadership">
               <strong>Overseer:</strong>
-              <p class="department-icon-line" th:each="name : ${details['OVERSEER']}"><svg aria-hidden="true"><use href="#people" /></svg><span th:text="${name}"></span></p>
+              <p class="department-icon-line" th:each="name : ${details['OVERSEER']}"><svg aria-hidden="true"><use href="#people" /></svg><span th:classappend="${ownVolunteerIds.contains(name.id) ? 'current-user-name' : ''}" th:text="${name.name}"></span></p>
               <p class="muted" th:if="${#lists.isEmpty(details['OVERSEER'])}">Not assigned</p>
             </div>
             <div class="department-leadership">
               <strong>Assistant Overseers:</strong>
-              <p class="department-icon-line" th:each="name : ${details['ASSISTANT_OVERSEER']}"><svg aria-hidden="true"><use href="#people" /></svg><span th:text="${name}"></span></p>
+              <p class="department-icon-line" th:each="name : ${details['ASSISTANT_OVERSEER']}"><svg aria-hidden="true"><use href="#people" /></svg><span th:classappend="${ownVolunteerIds.contains(name.id) ? 'current-user-name' : ''}" th:text="${name.name}"></span></p>
               <p class="muted" th:if="${#lists.isEmpty(details['ASSISTANT_OVERSEER'])}">Not assigned</p>
             </div>
             <div class="card-actions">
-              <a th:href="@{${base + '/departments'}(view=${d.id})}"
-                >View coverage →</a
-              ><a
+              <a th:if="${canManage}"
                 th:href="@{${base + '/departments'}(edit=${d.id})} + '#editor'"
                 >Edit</a
               >
-              <form
+              <form th:if="${canManage}"
                 method="post"
                 th:action="@{${base + '/departments/' + d.id + '/delete'}}"
                 data-confirm="Delete this department and all its shifts and assignments?"
@@ -68,7 +57,12 @@
                 <button class="text-button danger">Delete</button>
               </form>
             </div>
+            <details class="department-coverage" th:open="${selectedDepartment != null and selectedDepartment.id == d.id}">
+              <summary>View coverage</summary>
+              <div th:replace="~{shared/fragments :: shifts(${departmentSchedules[d.id]}, false)}"></div>
+            </details>
           </article>
+          <nav th:replace="~{shared/fragments :: pagination(${listPage}, @{${base + '/departments'}(page=${listPage.number - 1})}, @{${base + '/departments'}(page=${listPage.number + 1})})}"></nav>
         </div>
         <aside class="card editor" id="editor" th:if="${showEditor}">
           <p class="eyebrow">TEAM DETAILS</p>

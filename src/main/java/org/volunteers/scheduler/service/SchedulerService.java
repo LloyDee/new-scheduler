@@ -34,6 +34,29 @@ public class SchedulerService {
     }
 
     public List<Event> events() { return events.findAllByOrderByStartDateDescIdDesc(); }
+    public org.springframework.data.domain.Page<Event> eventsPage(int page) {
+        return events.findAllByOrderByStartDateDescIdDesc(org.springframework.data.domain.PageRequest.of(Math.max(0, page), 25));
+    }
+    public record VolunteerPage(Snapshot snapshot, org.springframework.data.domain.Page<Volunteer> page) { }
+
+    public VolunteerPage volunteerPage(long eventId, Long departmentId, String search, int page, List<Long> details) {
+        Event event = event(eventId);
+        var eventDepartments = departments.findByEventIdOrderByNameAscIdAsc(eventId);
+        var pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, page), 25);
+        var ids = volunteers.findPageIds(eventId, departmentId, search.strip().toLowerCase(Locale.ROOT), pageable);
+        Set<Long> needed = new LinkedHashSet<>(ids.getContent());
+        needed.addAll(details);
+        var records = needed.isEmpty() ? List.<Volunteer>of() : volunteers.findByIdInOrderByNameAscIdAsc(needed);
+        for (Long id : details) {
+            if (records.stream().noneMatch(v -> v.getId().equals(id) && v.getEvent().getId().equals(eventId))) throw notFound();
+        }
+        var eventAssignments = needed.isEmpty() ? List.<Assignment>of() : assignments.findForVolunteerShifts(needed);
+        var eventShifts = eventAssignments.stream().map(Assignment::getShift).distinct()
+            .sorted(Comparator.comparing(Shift::getDate).thenComparing(Shift::getStartTime).thenComparing(Shift::getId)).toList();
+        var visible = records.stream().filter(v -> ids.getContent().contains(v.getId())).toList();
+        return new VolunteerPage(new Snapshot(event, records, eventDepartments, eventShifts, eventAssignments),
+            new org.springframework.data.domain.PageImpl<>(visible, pageable, ids.getTotalElements()));
+    }
     public Event event(long id) { return events.findById(id).orElseThrow(SchedulerService::notFound); }
     public Volunteer volunteer(long eventId, long id) {
         Volunteer v = volunteers.findById(id).orElseThrow(SchedulerService::notFound);
@@ -48,8 +71,10 @@ public class SchedulerService {
         sameEvent(eventId, s.getDepartment().getEvent().getId()); return s;
     }
     public Snapshot snapshot(long id) {
-        return new Snapshot(event(id), volunteers.findByEventIdOrderByNameAscIdAsc(id),
-                departments.findByEventIdOrderByNameAscIdAsc(id),
+        Event event = event(id);
+        // Resolve map keys before fetching volunteer roles to avoid individual department loads.
+        var eventDepartments = departments.findByEventIdOrderByNameAscIdAsc(id);
+        return new Snapshot(event, volunteers.findByEventIdOrderByNameAscIdAsc(id), eventDepartments,
                 shifts.findByDepartmentEventIdOrderByDateAscStartTimeAscIdAsc(id),
                 assignments.findByShiftDepartmentEventIdOrderByIdAsc(id));
     }
@@ -92,7 +117,7 @@ public class SchedulerService {
         String phoneDigits = phone.replaceAll("[^0-9]", "");
         require(phoneDigits.length() == 10, "Enter a 10-digit phone number.");
         phone = "(" + phoneDigits.substring(0, 3) + ")" + phoneDigits.substring(3, 6) + "-" + phoneDigits.substring(6);
-        String email = required(input, "email", 254);
+        String email = optional(input, "email", 254);
         require(email.isEmpty() || email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"), "Enter a valid email address.");
         String congregation = required(input, "congregation", 160), notes = optional(input, "notes", 2000);
         String privilegeValue = required(input, "privilege", 40);
@@ -298,7 +323,7 @@ public class SchedulerService {
         try { return LocalTime.parse(input.getOrDefault(key, "")); }
         catch (DateTimeParseException ex) { throw invalid("Enter a valid time for " + key + "."); }
     }
-    private static String required(Map<String, String> input, String key, int max) {
+    static String required(Map<String, String> input, String key, int max) {
         String value = optional(input, key, max); require(!value.isBlank(), "Please enter " + key + "."); return value;
     }
     private static String optional(Map<String, String> input, String key, int max) {
@@ -325,8 +350,9 @@ public class SchedulerService {
         }
 
         public List<ShiftRow> rows() {
-            return shifts.stream().map(s -> new ShiftRow(s, assignments.stream()
-                    .filter(a -> a.getShift().getId().equals(s.getId())).toList())).toList();
+            Map<Long, List<Assignment>> byShift = new HashMap<>();
+            assignments.forEach(a -> byShift.computeIfAbsent(a.getShift().getId(), ignored -> new ArrayList<>()).add(a));
+            return shifts.stream().map(s -> new ShiftRow(s, byShift.getOrDefault(s.getId(), List.of()))).toList();
         }
     }
     public record ShiftRow(Shift shift, List<Assignment> assignments) {

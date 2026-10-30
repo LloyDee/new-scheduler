@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 @Transactional
-class SchedulerIntegrationTest {
+class SchedulerIntegrationTest extends ManagerAccessFixture {
     @Autowired SchedulerService service;
     @Autowired MockMvc mvc;
     @Autowired Events events;
@@ -98,12 +98,7 @@ class SchedulerIntegrationTest {
     }
 
     @Test void homeShowsWeatherWithoutSelectingAnEvent() throws Exception {
-        mvc.perform(get("/"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("pages/home"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-weather")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Create event"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("BUILD YOUR EVENT"))));
+        mvc.perform(get("/")).andExpect(redirectedUrl("/events"));
         mvc.perform(get("/events/" + event.getId() + "/home"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-weather")));
@@ -316,7 +311,7 @@ class SchedulerIntegrationTest {
 
     @Test void browserFlowPreservesValidationInputAndRequiresCsrf() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/").session(session)).andExpect(status().isOk()).andExpect(view().name("pages/home"));
+        mvc.perform(get("/").session(session)).andExpect(redirectedUrl("/events"));
         mvc.perform(post("/events/save").session(session)).andExpect(status().isForbidden());
         mvc.perform(post("/events/" + event.getId() + "/select").session(session).with(csrf()))
                 .andExpect(redirectedUrl("/events/" + event.getId() + "/home"));
@@ -436,8 +431,8 @@ class SchedulerIntegrationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"MINISTERIAL_SERVANT\" selected")));
     }
 
-    @Test void allVolunteerFieldsExceptNotesAreRequired() {
-        for (String key : List.of("name", "phone", "email", "congregation", "privilege", "departmentRole_" + department.getId())) {
+    @Test void volunteerIdentityAndMembershipFieldsAreRequired() {
+        for (String key : List.of("name", "phone", "congregation", "privilege", "departmentRole_" + department.getId())) {
             var input = volunteerInput();
             input.put(key, "   ");
             assertThatThrownBy(() -> service.saveVolunteer(event.getId(), null, input))

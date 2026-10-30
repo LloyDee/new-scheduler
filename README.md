@@ -89,7 +89,7 @@ Schema creation/update is automatic through Hibernate for this initial H2 versio
 
 ### Device Logs
 
-Open **More → Logs** and enter `snow`. Access stays unlocked for the server session; **Lock Logs** closes it immediately. Override the default with `SCHEDULER_LOGS_PASSWORD` or the `scheduler.logs.password` Spring property. Five incorrect attempts block further attempts in that session for five minutes.
+Open **More → Logs** with management access. Logs open without a password; users without management access receive HTTP 403. The separate notification-send password still uses `SCHEDULER_LOGS_PASSWORD` or the `scheduler.logs.password` Spring property.
 
 Each browser gets a random, HttpOnly identifier cookie lasting one year. Page loads update its anonymous summary in `scheduler_device_visit`; clearing cookies creates another summary. Names are reserved for future account integration. Summaries persist across restarts and are not automatically deleted. Concurrent updates are serialized within one application instance; multiple replicas would require database-level concurrency coordination.
 
@@ -102,3 +102,34 @@ Run backend tests with `./gradlew test` and the mocked browser tracking checks w
 3. Assign a volunteer to overlapping shifts: cancel once, then explicitly confirm. Edit an assigned shift to introduce a conflict and confirm its warning. Test adjacent shifts too.
 4. Print each report and inspect date/department filters and page breaks. Download CSV with names containing commas, quotes, and non-ASCII characters.
 5. Stop and restart from the same directory; verify events and assignments remain. Delete a populated event and verify the other event remains.
+
+### Phone-only sign-in
+
+All application pages now require a volunteer phone number. `/login` matches normalized
+US numbers globally across event volunteer records (10 digits or `+1`). No SMS, password,
+or ownership verification is performed. Anyone who knows a registered number can use
+that identity, including its management permissions; this is an intentional trust-based mode.
+
+`/signup` reuses the volunteer editor, asks which event to join, rejects an existing phone
+number globally, and creates a profile without department roles. An organizer assigns
+roles afterward. Existing volunteer records with the same normalized number across events
+are treated as one person. Review shared/duplicate numbers before deployment. Management
+imports and backup restores retain event-specific records; global duplicate rejection applies
+to self-registration. A blank database must be provisioned with an event and a management
+volunteer before use (there is deliberately no public administrator-registration route).
+
+Admin, Overseer, Assistant Overseer and Captain can manage the selected event. Being a
+manager in one event does not grant management access to another. These roles can also
+create events; the creator is added as Admin in an Administration department of the new event. Other roles can only edit their own contact profile; department roles cannot be changed by self-edit. Contact edits are synchronized across their event
+records. Notification sending still requires the existing notification unlock in addition
+to an authorized role.
+
+Home lists the signed-in person's upcoming shifts. Schedule and Volunteers initially use
+their lowest-ID department in the current event when they belong to several; choosing
+All departments overrides that default. Names are highlighted by volunteer identity.
+Sessions retain the phone identity until expiration or logout; roles are read on each request.
+
+Run `bash gradlew test` with Java 21 and `node --test src/test/js/*.test.cjs`.
+`PhoneLoginIntegrationTest` exercises real login and permission checks. Existing business-flow
+integration tests use `ManagerAccessFixture` to keep their scheduling assertions independent
+of login setup. GitHub Actions runs both suites for pushes and pull requests.

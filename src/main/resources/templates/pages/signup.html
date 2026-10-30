@@ -1,0 +1,5 @@
+<!doctype html><html xmlns:th="http://www.thymeleaf.org" th:replace="~{shared/layout :: page('Sign up', 'login', ~{::section})}"><body><section>
+<h1>Sign up</h1><p>Create your volunteer profile. Your event organizer will assign your department and role.</p>
+<p th:if="${events.isEmpty()}">No events are available. Contact your event organizer.</p>
+<div th:unless="${events.isEmpty()}" th:insert="~{shared/volunteer-editor :: editor}"></div>
+</section></body></html>

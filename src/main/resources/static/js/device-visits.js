@@ -1,4 +1,5 @@
-(async () => {
+(() => {
+async function recordVisit() {
   try {
     const ua = navigator.userAgent;
     const match = ua.match(/(Edg|OPR|Firefox|CriOS)\/([\d.]+)/) || ua.match(/(Chrome|Version)\/([\d.]+)/);
@@ -32,4 +33,7 @@
     if (token && header && url) await fetch(url, { method: "POST", credentials: "same-origin", keepalive: true,
       headers: { "Content-Type": "application/json", [header]: token }, body: JSON.stringify(data) });
   } catch (_) { /* Tracking must never interrupt the application. */ }
+}
+document.addEventListener('scheduler:page', recordVisit);
+recordVisit();
 })();
