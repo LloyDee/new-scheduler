@@ -3,6 +3,10 @@
     gap: 12px;
 }
 
+.import-help { margin-top: 16px; overflow-wrap: anywhere; }
+.import-help summary { cursor: pointer; }
+#data input[type="file"] { max-width: 100%; }
+
 .app-options button {
     width: 100%;
     text-align: left;
@@ -76,3 +80,20 @@
 body:has(.app-dialog[open]) {
     overflow: hidden;
 }
+
+.assignment-dialog > form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.assignment-choices {
+    display: grid;
+    gap: 12px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+
+.assignment-dialog .app-dialog-footer { gap: 12px; }

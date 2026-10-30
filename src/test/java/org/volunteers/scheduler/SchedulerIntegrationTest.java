@@ -640,6 +640,55 @@ class SchedulerIntegrationTest {
         return input;
     }
 
+    @Test void batchAssignmentSavesMultipleVolunteersThroughEndpoint() throws Exception {
+        Volunteer second = service.saveVolunteer(event.getId(), null,
+                volunteerInput("name", "Second", "phone", "2025550101", "email", "second@example.com"));
+        mvc.perform(post("/events/" + event.getId() + "/schedule/" + shift.getId() + "/assign-batch")
+                .with(csrf()).param("volunteerIds", volunteer.getId().toString(), second.getId().toString()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("notice", "Volunteers assigned."));
+        assertThat(service.snapshot(event.getId()).assignments()).hasSize(2);
+    }
+
+    @Test void batchAssignmentRejectsInvalidSelectionsBeforeSaving() {
+        Volunteer unassigned = service.saveVolunteer(event.getId(), null, noDepartmentInput());
+        Department other = service.saveDepartment(event.getId(), null, Map.of("name", "Other"));
+        Volunteer wrongDepartment = service.saveVolunteer(event.getId(), null,
+                volunteerInput("name", "Other", "phone", "2025550102", "email", "other@example.com",
+                        "departmentRole_" + other.getId(), "VOLUNTEER"));
+        Event otherEvent = event("Other event", "REGIONAL_CONVENTION");
+        Volunteer foreign = service.saveVolunteer(otherEvent.getId(), null, noDepartmentInput());
+        for (List<Long> selection : List.of(List.<Long>of(), List.of(volunteer.getId(), volunteer.getId()),
+                List.of(volunteer.getId(), unassigned.getId()), List.of(volunteer.getId(), wrongDepartment.getId()),
+                List.of(volunteer.getId(), foreign.getId()), List.of(volunteer.getId(), Long.MAX_VALUE))) {
+            assertThatThrownBy(() -> service.assignBatch(event.getId(), shift.getId(), selection))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThat(service.snapshot(event.getId()).assignments()).isEmpty();
+        }
+    }
+
+    @Test void batchAssignmentRejectsAlreadyAssignedAndOverlappingVolunteers() {
+        service.assign(event.getId(), shift.getId(), volunteer.getId(), false);
+        Shift overlapping = service.saveShift(event.getId(), null, shiftInput("09:30", "10:30"));
+        for (Shift target : List.of(shift, overlapping)) {
+            assertThatThrownBy(() -> service.assignBatch(event.getId(), target.getId(), List.of(volunteer.getId())))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(service.snapshot(event.getId()).assignments()).hasSize(1);
+    }
+
+    @Test void scheduleRendersCheckboxDialogForDepartmentMembersOnly() throws Exception {
+        Volunteer unassigned = service.saveVolunteer(event.getId(), null, noDepartmentInput());
+        var result = mvc.perform(get("/events/" + event.getId() + "/schedule"))
+                .andExpect(status().isOk()).andReturn();
+        String html = result.getResponse().getContentAsString();
+        assertThat(html).contains("Choose Volunteers...", "assignment-dialog", "name=\"volunteerIds\"",
+                "data-assignment-submit disabled").doesNotContain("class=\"assignment-form\"");
+        @SuppressWarnings("unchecked")
+        var options = (Map<Long, List<Volunteer>>) result.getModelAndView().getModel().get("assignmentOptions");
+        assertThat(options.get(shift.getId())).containsExactly(volunteer).doesNotContain(unassigned);
+    }
+
     private Map<String, String> volunteerInput(String... values) {
         Map<String, String> input = new HashMap<>(Map.of("name", "Alex", "phone", "202-555-0100",
                 "email", "alex@example.com", "congregation", "North", "privilege", "PUBLISHER"));

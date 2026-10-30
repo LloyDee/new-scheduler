@@ -21,9 +21,37 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class WebController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WebController.class);
     private final SchedulerService service;
     private final BackupService backups;
-    public WebController(SchedulerService service, BackupService backups) { this.service = service; this.backups = backups; }
+    private final org.volunteers.scheduler.service.VolunteerImportService imports;
+    public WebController(SchedulerService service, BackupService backups, org.volunteers.scheduler.service.VolunteerImportService imports) {
+        this.service = service; this.backups = backups; this.imports = imports;
+    }
+
+    @GetMapping("/settings/data/volunteers/template.csv")
+    ResponseEntity<String> volunteerTemplate(HttpSession session) {
+        Long eventId = (Long) session.getAttribute("activeEvent");
+        if (eventId == null) throw new IllegalArgumentException("Choose an active event first.");
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=volunteers.csv")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8)).body(imports.template(eventId));
+    }
+
+    @PostMapping("/settings/data/volunteers/import")
+    String importVolunteers(@RequestParam("file") MultipartFile file, HttpSession session, RedirectAttributes flash) {
+        Long eventId = (Long) session.getAttribute("activeEvent");
+        try {
+            if (eventId == null) throw new IllegalArgumentException("Choose an active event first.");
+            int count = imports.importFile(eventId, file);
+            flash.addFlashAttribute("importNotice", count + (count == 1 ? " volunteer imported." : " volunteers imported."));
+        } catch (IllegalArgumentException ex) {
+            flash.addFlashAttribute("importError", ex.getMessage() + " No volunteers were imported.");
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            log.error("Volunteer import rejected by the database for event {}", eventId, ex);
+            flash.addFlashAttribute("importError", "Import failed because the database rejected a record. No volunteers were imported. Contact the administrator.");
+        }
+        return "redirect:/settings#data";
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -216,7 +244,9 @@ public class WebController {
         var data = prepare(eventId, model, session);
         filter(data, departmentId, date, model);
         Map<Long, List<Volunteer>> assignmentOptions = new HashMap<>();
-        data.shifts().forEach(s -> assignmentOptions.put(s.getId(), data.availableVolunteers(s)));
+        data.shifts().forEach(s -> assignmentOptions.put(s.getId(), data.availableVolunteers(s).stream()
+                .filter(v -> v.getDepartmentRoles().keySet().stream()
+                        .anyMatch(d -> d.getId().equals(s.getDepartment().getId()))).toList()));
         model.addAttribute("assignmentOptions", assignmentOptions);
         Map<String, String> defaults = new HashMap<>(Map.of("date", data.event().getStartDate().toString(), "requiredCount", "1"));
         if (departmentId != null) defaults.put("departmentId", departmentId.toString());
@@ -259,6 +289,18 @@ public class WebController {
             flash.addFlashAttribute("pending", Map.of("shiftId", Long.toString(id), "volunteerId", input.get("volunteerId")));
         } catch (IllegalArgumentException ex) { flash.addFlashAttribute("error", ex.getMessage()); }
         return "redirect:" + base + "#shift-" + id;
+    }
+
+    @PostMapping("/events/{eventId}/schedule/{id}/assign-batch")
+    String assignBatch(@PathVariable long eventId, @PathVariable long id,
+                       @RequestParam(required = false) List<Long> volunteerIds, RedirectAttributes flash) {
+        try {
+            service.assignBatch(eventId, id, volunteerIds);
+            flash.addFlashAttribute("notice", "Volunteers assigned.");
+        } catch (IllegalArgumentException ex) {
+            flash.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/events/" + eventId + "/schedule#shift-" + id;
     }
 
     @PostMapping("/events/{eventId}/assignments/{id}/delete")
@@ -444,8 +486,12 @@ public class WebController {
 class BackupUploadErrors {
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
     String backupTooLarge(HttpServletRequest request, RedirectAttributes flash) {
-        flash.addFlashAttribute("error", "Restore failed. Backup files exceed the upload size limit. Existing data was kept.");
         String path = request.getRequestURI().substring(request.getContextPath().length());
+        if (path.equals("/settings/data/volunteers/import")) {
+            flash.addFlashAttribute("importError", "File exceeds the 10 MB upload limit. No volunteers were imported.");
+            return "redirect:/settings#data";
+        }
+        flash.addFlashAttribute("error", "Restore failed. Backup files exceed the upload size limit. Existing data was kept.");
         if (path.matches("/events/[0-9]+/backups/restore"))
             return "redirect:" + path.replace("/backups/restore", "/reports?type=backup");
         return "redirect:/";

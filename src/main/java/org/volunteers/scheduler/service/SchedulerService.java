@@ -193,6 +193,22 @@ public class SchedulerService {
     }
 
     @Transactional
+    public void assignBatch(long eventId, long shiftId, List<Long> volunteerIds) {
+        events.lockForVolunteerUpdate(eventId).orElseThrow(SchedulerService::notFound);
+        Shift target = shift(eventId, shiftId);
+        require(volunteerIds != null && !volunteerIds.isEmpty(), "Choose at least one volunteer.");
+        require(new HashSet<>(volunteerIds).size() == volunteerIds.size(), "Choose each volunteer only once.");
+        Set<Long> eligible = new HashSet<>();
+        snapshot(eventId).availableVolunteers(target).stream()
+                .filter(v -> v.getDepartmentRoles().keySet().stream()
+                        .anyMatch(d -> d.getId().equals(target.getDepartment().getId())))
+                .forEach(v -> eligible.add(v.getId()));
+        require(volunteerIds.stream().allMatch(eligible::contains),
+                "One or more selected volunteers are no longer available in this department. Please choose again.");
+        for (Long volunteerId : volunteerIds) assign(eventId, shiftId, volunteerId, false);
+    }
+
+    @Transactional
     public void unassign(long eventId, long id) {
         Assignment a = assignments.findById(id).orElseThrow(SchedulerService::notFound);
         sameEvent(eventId, a.getShift().getDepartment().getEvent().getId()); assignments.delete(a);

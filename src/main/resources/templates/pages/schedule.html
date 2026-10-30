@@ -6,6 +6,8 @@
 >
   <body>
     <section>
+      <link rel="stylesheet" th:href="@{/css/settings-app.css}" />
+      <script defer th:src="@{/js/schedule.js}"></script>
       <div class="page-heading">
         <a class="button" th:href="${base + '/schedule?create=true#editor'}"
           >+ Create shift</a

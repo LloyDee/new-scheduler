@@ -53,6 +53,24 @@ The terminal `bootRun` command above does not automatically compile source chang
 
 ## Data and operation
 
+### PostgreSQL volunteer role constraint repair
+
+If saving or importing a Key Man fails with constraint
+`volunteer_department_roles_department_role_check`, run
+[`scripts/sql/repair-volunteer-role-constraint.sql`](scripts/sql/repair-volunteer-role-constraint.sql)
+once in the affected PostgreSQL database (for example, in Supabase's SQL Editor).
+Run the complete script, including `BEGIN` and `COMMIT`, using the application's
+schema/search path. It replaces only that check constraint and preserves existing
+volunteers and department assignments. The script is safe to run again and allows
+every current role, including `KEY_MAN` and `CAPTAIN`, while rejecting unknown roles.
+Hibernate's automatic schema update is not a replacement for this repair on an
+existing database. The script is manual; restarting the app does not run it.
+
+After the script succeeds, restart the app with the updated import error handling
+and retry the CSV in Settings > Data. No CSV edits are needed. An import rejected
+by the database rolls back in full and now displays an error in the Data card;
+the server log retains the underlying exception for diagnosis.
+
 ### Event CSV backups
 
 Open the event, then go to **More → Reports** and choose one of the three **All … information (backup)** options. Download the volunteer, schedule/shift, and department CSV files together. The three files share a backup set identifier in their filenames and include department roles and volunteer assignments. Use **Capture new backup** to include subsequent changes, then download all three files again.

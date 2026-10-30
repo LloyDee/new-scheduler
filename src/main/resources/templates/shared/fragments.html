@@ -69,24 +69,31 @@
           </div>
         </div>
         <th:block th:if="${editable}">
-          <form
-            class="assignment-form"
-            th:if="${!assignmentOptions[row.shift.id].isEmpty()}"
-            method="post"
-            th:action="@{${base + '/schedule/' + row.shift.id + '/assign'}}"
-          >
-            <label
-              ><span class="sr-only">Volunteer to assign</span
-              ><select name="volunteerId" required>
-                <option value="">Choose a volunteer…</option>
-                <option
-                  th:each="v : ${assignmentOptions[row.shift.id]}"
-                  th:value="${v.id}"
-                  th:text="${v.name}"
-                ></option></select
-            ></label>
-            <button class="secondary" type="submit">Assign</button>
-          </form>
+          <th:block th:if="${!assignmentOptions[row.shift.id].isEmpty()}">
+            <button type="button" class="secondary"
+                    th:attr="data-assignment-dialog=${'assignment-dialog-' + row.shift.id},aria-controls=${'assignment-dialog-' + row.shift.id}"
+                    aria-haspopup="dialog">Choose Volunteers...</button>
+            <dialog class="app-dialog assignment-dialog" th:id="${'assignment-dialog-' + row.shift.id}"
+                    th:attr="aria-labelledby=${'assignment-title-' + row.shift.id}">
+              <form method="post" th:action="@{${base + '/schedule/' + row.shift.id + '/assign-batch'}}">
+                <div class="app-dialog-content">
+                  <h2 th:id="${'assignment-title-' + row.shift.id}">Choose Volunteers</h2>
+                  <p><strong th:text="${row.shift.name}"></strong> ? <span th:text="${row.shift.department.name}"></span></p>
+                  <fieldset class="assignment-choices">
+                    <legend class="sr-only">Volunteers to assign</legend>
+                    <label class="checkbox-label" th:each="v : ${assignmentOptions[row.shift.id]}">
+                      <input type="checkbox" name="volunteerIds" th:value="${v.id}" />
+                      <span th:text="${v.name}"></span>
+                    </label>
+                  </fieldset>
+                </div>
+                <div class="app-dialog-footer">
+                  <button type="button" class="secondary" data-assignment-cancel>Cancel</button>
+                  <button type="submit" data-assignment-submit disabled>Assign</button>
+                </div>
+              </form>
+            </dialog>
+          </th:block>
           <p class="muted" th:if="${assignmentOptions[row.shift.id].isEmpty()}">
             No available volunteers in this department for this time window.
           </p>

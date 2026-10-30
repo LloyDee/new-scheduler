@@ -16,6 +16,28 @@
         </div>
     </div>
     <div class="settings-grid">
+        <div class="card settings-card" id="data">
+            <h2>Data</h2>
+            <p class="muted">Import volunteers in bulk using a CSV or Excel file (.csv, .xls, .xlsx), up to 10 MB.</p>
+            <p th:if="${importError}" class="alert warning" role="alert" th:text="${importError}"></p>
+            <p th:if="${importNotice}" class="alert success" role="status" th:text="${importNotice}"></p>
+            <p th:if="${event == null}" class="muted">Select an event on the Events page to import volunteers.</p>
+            <th:block th:if="${event != null}">
+                <p>Import into: <strong th:text="${event.name}"></strong></p>
+                <p><a th:href="@{/settings/data/volunteers/template.csv}">Download CSV template</a></p>
+                <form class="form-stack" method="post" enctype="multipart/form-data" th:action="@{/settings/data/volunteers/import}">
+                    <label>Volunteer file<input type="file" name="file" accept=".csv,.xls,.xlsx" required /></label>
+                    <button>Import volunteers</button>
+                </form>
+            </th:block>
+            <details class="import-help">
+                <summary>File format and validation</summary>
+                <p>Required columns and values: Name, Phone, Email, Congregation, Privilege. Notes is optional. Headers can appear in any order; capitalization is ignored.</p>
+                <p>Phone must contain 10 digits. Use text cells for phone numbers in Excel to preserve leading zeros. Privilege: Elder, Ministerial Servant, or Publisher.</p>
+                <p>Optional department columns use <strong>Department: department name</strong>. Roles: Admin, Overseer, Assistant Overseer, Captain, Key Man, or Volunteer. Leave all department cells blank for No Department Yet.</p>
+                <p>Excel imports use the first worksheet. Formula and error cells are not accepted. Duplicate names or phone numbers in this event or file reject the entire import. Any invalid row rejects the entire file; no volunteers are saved.</p>
+            </details>
+        </div>
         <div class="card theme-card">
             <h2>Theme</h2>
             <fieldset class="theme-options" aria-describedby="theme-help">

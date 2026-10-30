@@ -14,6 +14,8 @@ java {
 repositories { mavenCentral() }
 
 dependencies {
+    implementation 'org.apache.commons:commons-csv:1.14.1'
+    implementation 'org.apache.poi:poi-ooxml:5.4.1'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
