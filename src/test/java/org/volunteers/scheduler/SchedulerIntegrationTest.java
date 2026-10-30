@@ -176,9 +176,12 @@ class SchedulerIntegrationTest {
         assertThat(card).contains("Available Person").doesNotContain("Alex Rivera", "Parking Person");
         service.assign(event.getId(), shift.getId(), available.getId(), false);
         assertThat(service.snapshot(event.getId()).availableVolunteers(shift)).isEmpty();
-        mvc.perform(get("/events/" + event.getId() + "/schedule"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("No available volunteers in this department")));
+        html = mvc.perform(get("/events/" + event.getId() + "/schedule"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        card = html.substring(html.indexOf("id=\"shift-" + shift.getId() + "\""));
+        card = card.substring(0, card.indexOf("</article>"));
+        assertThat(card).contains("Choose Volunteers...", "checked=\"checked\"")
+                .doesNotContain("No available volunteers in this department");
     }
 
     @Test void overlapRequiresConfirmationButAdjacentAndOverstaffedShiftsAreAllowed() {
@@ -683,10 +686,44 @@ class SchedulerIntegrationTest {
                 .andExpect(status().isOk()).andReturn();
         String html = result.getResponse().getContentAsString();
         assertThat(html).contains("Choose Volunteers...", "assignment-dialog", "name=\"volunteerIds\"",
-                "data-assignment-submit disabled").doesNotContain("class=\"assignment-form\"");
+                "data-assignment-submit>Save").doesNotContain("class=\"assignment-form\"");
         @SuppressWarnings("unchecked")
         var options = (Map<Long, List<Volunteer>>) result.getModelAndView().getModel().get("assignmentOptions");
         assertThat(options.get(shift.getId())).containsExactly(volunteer).doesNotContain(unassigned);
+    }
+
+    @Test void assignmentSelectionSupportsAddRemoveRetainAndClear() throws Exception {
+        Volunteer second = service.saveVolunteer(event.getId(), null,
+                volunteerInput("name", "Second", "phone", "2025550101", "email", "second@example.com"));
+        service.updateAssignments(event.getId(), shift.getId(), List.of(volunteer.getId()));
+        Long retainedId = service.snapshot(event.getId()).assignments().getFirst().getId();
+        service.updateAssignments(event.getId(), shift.getId(), List.of(volunteer.getId(), second.getId()));
+        assertThat(service.snapshot(event.getId()).assignments()).hasSize(2);
+        service.updateAssignments(event.getId(), shift.getId(), List.of(volunteer.getId()));
+        assertThat(service.snapshot(event.getId()).assignments()).extracting(a -> a.getId()).containsExactly(retainedId);
+        String html = mvc.perform(get("/events/" + event.getId() + "/schedule"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("assigned-person", "checked=\"checked\"", "Choose Volunteers...")
+                .doesNotContain("chip-remove");
+        mvc.perform(post("/events/" + event.getId() + "/schedule/" + shift.getId() + "/assignments")
+                .with(csrf())).andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("notice", "Volunteers updated."));
+        assertThat(service.snapshot(event.getId()).assignments()).isEmpty();
+    }
+
+    @Test void invalidAssignmentSelectionPreservesExistingAssignments() {
+        service.assign(event.getId(), shift.getId(), volunteer.getId(), false);
+        Volunteer second = service.saveVolunteer(event.getId(), null,
+                volunteerInput("name", "Second", "phone", "2025550101", "email", "second@example.com"));
+        Shift overlapping = service.saveShift(event.getId(), null, shiftInput("09:30", "10:30"));
+        service.assign(event.getId(), overlapping.getId(), second.getId(), false);
+        Volunteer noDepartment = service.saveVolunteer(event.getId(), null, noDepartmentInput());
+        for (List<Long> selection : List.of(List.of(second.getId()), List.of(Long.MAX_VALUE),
+                List.of(noDepartment.getId()), List.of(volunteer.getId(), volunteer.getId()))) {
+            assertThatThrownBy(() -> service.updateAssignments(event.getId(), shift.getId(), selection))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThat(service.snapshot(event.getId()).assignments()).hasSize(2);
+        }
     }
 
     private Map<String, String> volunteerInput(String... values) {

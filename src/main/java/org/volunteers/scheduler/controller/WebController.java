@@ -244,10 +244,22 @@ public class WebController {
         var data = prepare(eventId, model, session);
         filter(data, departmentId, date, model);
         Map<Long, List<Volunteer>> assignmentOptions = new HashMap<>();
-        data.shifts().forEach(s -> assignmentOptions.put(s.getId(), data.availableVolunteers(s).stream()
-                .filter(v -> v.getDepartmentRoles().keySet().stream()
-                        .anyMatch(d -> d.getId().equals(s.getDepartment().getId()))).toList()));
+        Map<Long, Set<Long>> assignedVolunteerIds = new HashMap<>();
+        data.shifts().forEach(s -> {
+            Set<Long> current = new HashSet<>();
+            data.assignments().stream().filter(a -> a.getShift().getId().equals(s.getId()))
+                    .forEach(a -> current.add(a.getVolunteer().getId()));
+            assignedVolunteerIds.put(s.getId(), current);
+            Set<Long> eligible = new HashSet<>(current);
+            data.availableVolunteers(s).stream()
+                    .filter(v -> v.getDepartmentRoles().keySet().stream()
+                            .anyMatch(d -> d.getId().equals(s.getDepartment().getId())))
+                    .forEach(v -> eligible.add(v.getId()));
+            assignmentOptions.put(s.getId(), data.volunteers().stream()
+                    .filter(v -> eligible.contains(v.getId())).toList());
+        });
         model.addAttribute("assignmentOptions", assignmentOptions);
+        model.addAttribute("assignedVolunteerIds", assignedVolunteerIds);
         Map<String, String> defaults = new HashMap<>(Map.of("date", data.event().getStartDate().toString(), "requiredCount", "1"));
         if (departmentId != null) defaults.put("departmentId", departmentId.toString());
         if (edit != null) {
@@ -297,6 +309,18 @@ public class WebController {
         try {
             service.assignBatch(eventId, id, volunteerIds);
             flash.addFlashAttribute("notice", "Volunteers assigned.");
+        } catch (IllegalArgumentException ex) {
+            flash.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/events/" + eventId + "/schedule#shift-" + id;
+    }
+
+    @PostMapping("/events/{eventId}/schedule/{id}/assignments")
+    String updateAssignments(@PathVariable long eventId, @PathVariable long id,
+                             @RequestParam(required = false) List<Long> volunteerIds, RedirectAttributes flash) {
+        try {
+            service.updateAssignments(eventId, id, volunteerIds == null ? List.of() : volunteerIds);
+            flash.addFlashAttribute("notice", "Volunteers updated.");
         } catch (IllegalArgumentException ex) {
             flash.addFlashAttribute("error", ex.getMessage());
         }

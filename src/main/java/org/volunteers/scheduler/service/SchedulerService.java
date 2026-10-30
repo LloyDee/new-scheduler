@@ -209,6 +209,32 @@ public class SchedulerService {
     }
 
     @Transactional
+    public void updateAssignments(long eventId, long shiftId, List<Long> volunteerIds) {
+        events.lockForVolunteerUpdate(eventId).orElseThrow(SchedulerService::notFound);
+        Shift target = shift(eventId, shiftId);
+        require(volunteerIds != null, "Choose volunteers to save.");
+        Set<Long> selected = new HashSet<>(volunteerIds);
+        require(selected.size() == volunteerIds.size(), "Choose each volunteer only once.");
+        var data = snapshot(eventId);
+        var current = data.assignments().stream()
+                .filter(a -> a.getShift().getId().equals(shiftId)).toList();
+        Set<Long> currentIds = new HashSet<>();
+        current.forEach(a -> currentIds.add(a.getVolunteer().getId()));
+        Set<Long> eligible = new HashSet<>(currentIds);
+        data.availableVolunteers(target).stream()
+                .filter(v -> v.getDepartmentRoles().keySet().stream()
+                        .anyMatch(d -> d.getId().equals(target.getDepartment().getId())))
+                .forEach(v -> eligible.add(v.getId()));
+        require(selected.stream().allMatch(eligible::contains),
+                "One or more selected volunteers are no longer available in this department. Please choose again.");
+        for (Long volunteerId : selected) {
+            if (!currentIds.contains(volunteerId)) assign(eventId, shiftId, volunteerId, false);
+        }
+        assignments.deleteAll(current.stream()
+                .filter(a -> !selected.contains(a.getVolunteer().getId())).toList());
+    }
+
+    @Transactional
     public void unassign(long eventId, long id) {
         Assignment a = assignments.findById(id).orElseThrow(SchedulerService::notFound);
         sameEvent(eventId, a.getShift().getDepartment().getEvent().getId()); assignments.delete(a);

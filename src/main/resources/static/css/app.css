@@ -708,11 +708,22 @@ textarea {
     margin: 0
 }
 
-.shift-time {
-    font-size: 1.2rem;
-    letter-spacing: -.03em;
-    font-weight: 600;
-    margin: 12px 0 6px
+.shift-task {
+    display: flex;
+    flex-direction: column;
+    gap: 2px
+}
+
+.shift-task > h3, .shift-task > .shift-time {
+    margin: 0;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: normal;
+    color: var(--ink);
+    text-wrap: wrap
 }
 
 .shift-card > .muted {
@@ -723,11 +734,79 @@ textarea {
     scroll-margin-top: 20px
 }
 
-.assigned-list {
+.shift-card > .card-heading {
+    align-items: flex-start;
+    flex-wrap: nowrap
+}
+
+.shift-card > .card-heading > :first-child {
+    min-width: 0;
+    overflow-wrap: anywhere
+}
+
+.shift-status {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0
+}
+
+.shift-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 0 10px;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: normal;
+    color: var(--muted);
+    white-space: nowrap
+}
+
+.shift-department {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+.shift-meta > :not(.shift-department) { flex-shrink: 0; }
+
+.shift-assignment-count {
+    font-size: .8rem;
+    white-space: nowrap
+}
+
+.assigned-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 12px;
     margin: 16px 0
+}
+
+.assigned-person {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    min-width: 0;
+    font-size: .75rem;
+    line-height: 1.4
+}
+
+.assigned-person span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+.assigned-person svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8
 }
 
 .person-chip {

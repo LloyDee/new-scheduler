@@ -13,59 +13,39 @@
       >
         <div class="card-heading">
           <div>
-            <p
-              class="eyebrow"
-              th:text="${#temporals.format(row.shift.date, 'EEE, MMM d, yyyy')}"
-            ></p>
-            <h3 th:text="${row.shift.name}"></h3>
-            <p class="muted" th:text="${row.shift.department.name}"></p>
+            <p class="shift-meta">
+              <span class="shift-department" th:text="${row.shift.department.name}" th:title="${row.shift.department.name}"></span>
+              <span aria-hidden="true">·</span>
+              <span class="shift-date" th:text="${#temporals.format(row.shift.date, 'EEE, MMM d, yyyy')}"></span>
+            </p>
+            <div class="shift-task">
+              <h3 th:text="${row.shift.name}"></h3>
+              <p class="shift-time">
+                <span th:text="${#temporals.format(row.shift.startTime, timePattern)}"></span>
+                <span aria-hidden="true"> → </span>
+                <span th:text="${#temporals.format(row.shift.endTime, timePattern)}"></span>
+              </p>
+            </div>
           </div>
-          <span
-            class="badge"
-            th:classappend="${row.statusClass}"
-            th:text="${row.status}"
-          ></span>
+          <div class="shift-status">
+            <span
+              class="badge"
+              th:classappend="${row.statusClass}"
+              th:text="${row.status}"
+            ></span>
+            <strong class="shift-assignment-count"
+                    th:text="${row.assignments.size() + ' / ' + row.shift.requiredCount}"></strong>
+          </div>
         </div>
-        <p class="shift-time">
-          <span
-            th:text="${#temporals.format(row.shift.startTime, timePattern)}"
-          ></span
-          ><span aria-hidden="true"> → </span
-          ><span
-            th:text="${#temporals.format(row.shift.endTime, timePattern)}"
-          ></span>
-        </p>
-        <p class="muted">
-          <strong
-            th:text="${row.assignments.size() + ' / ' + row.shift.requiredCount}"
-          ></strong>
-          volunteers assigned<span
-            th:if="${row.missing > 0}"
-            th:text="${' · ' + row.missing + ' still needed'}"
-          ></span>
-        </p>
         <p
           class="preserve"
           th:if="${!#strings.isEmpty(row.shift.notes)}"
           th:text="${row.shift.notes}"
         ></p>
         <div class="assigned-list" th:if="${!row.assignments.isEmpty()}">
-          <div class="person-chip" th:each="assignment : ${row.assignments}">
-            <span th:text="${assignment.volunteer.name}"></span>
-            <form
-              th:if="${editable}"
-              method="post"
-              th:action="@{${base + '/assignments/' + assignment.id + '/delete'}}"
-              data-confirm="Remove this volunteer from the shift?"
-            >
-              <button
-                class="chip-remove"
-                type="submit"
-                th:attr="aria-label=${'Remove ' + assignment.volunteer.name}"
-              >
-                ×
-              </button>
-            </form>
+          <div class="assigned-person" th:each="assignment : ${row.assignments}">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4" /><path d="M4 21v-3a8 8 0 0 1 16 0v3" /></svg>
+            <span th:text="${assignment.volunteer.name}" th:title="${assignment.volunteer.name}"></span>
           </div>
         </div>
         <th:block th:if="${editable}">
@@ -75,21 +55,21 @@
                     aria-haspopup="dialog">Choose Volunteers...</button>
             <dialog class="app-dialog assignment-dialog" th:id="${'assignment-dialog-' + row.shift.id}"
                     th:attr="aria-labelledby=${'assignment-title-' + row.shift.id}">
-              <form method="post" th:action="@{${base + '/schedule/' + row.shift.id + '/assign-batch'}}">
+              <form method="post" th:action="@{${base + '/schedule/' + row.shift.id + '/assignments'}}">
                 <div class="app-dialog-content">
                   <h2 th:id="${'assignment-title-' + row.shift.id}">Choose Volunteers</h2>
                   <p><strong th:text="${row.shift.name}"></strong> ? <span th:text="${row.shift.department.name}"></span></p>
                   <fieldset class="assignment-choices">
-                    <legend class="sr-only">Volunteers to assign</legend>
+                    <legend class="sr-only">Assigned volunteers</legend>
                     <label class="checkbox-label" th:each="v : ${assignmentOptions[row.shift.id]}">
-                      <input type="checkbox" name="volunteerIds" th:value="${v.id}" />
+                      <input type="checkbox" name="volunteerIds" th:value="${v.id}" th:checked="${assignedVolunteerIds[row.shift.id].contains(v.id)}" />
                       <span th:text="${v.name}"></span>
                     </label>
                   </fieldset>
                 </div>
                 <div class="app-dialog-footer">
                   <button type="button" class="secondary" data-assignment-cancel>Cancel</button>
-                  <button type="submit" data-assignment-submit disabled>Assign</button>
+                  <button type="submit" data-assignment-submit>Save</button>
                 </div>
               </form>
             </dialog>
